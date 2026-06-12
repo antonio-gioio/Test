@@ -1,0 +1,42 @@
+@use 'leaflet/dist/leaflet.css';
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  color: #0f172a;
+}
+
+/* Vessel markers rendered by Leaflet divIcons (outside Angular component styles). */
+.vessel-icon {
+  background: transparent;
+  border: none;
+}
+
+.vessel-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  font-size: 16px;
+  line-height: 1;
+  color: #0369a1;
+  text-shadow:
+    0 0 2px #fff,
+    0 0 4px #fff;
+  transition: transform 0.5s linear;
+
+  &.stopped {
+    color: #64748b;
+  }
+
+  &.selected {
+    color: #dc2626;
+  }
+}

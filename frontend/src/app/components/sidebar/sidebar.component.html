@@ -1,0 +1,66 @@
+<div class="sidebar">
+  <input
+    class="search"
+    type="search"
+    placeholder="Search by name or MMSI…"
+    [ngModel]="search()"
+    (ngModelChange)="search.set($event)"
+  />
+
+  @if (vesselService.selectedVessel(); as vessel) {
+    <section class="detail">
+      <h2>{{ vessel.name || 'MMSI ' + vessel.mmsi }}</h2>
+      <dl>
+        <dt>MMSI</dt>
+        <dd>{{ vessel.mmsi }}</dd>
+        @if (vessel.callSign) {
+          <dt>Call sign</dt>
+          <dd>{{ vessel.callSign }}</dd>
+        }
+        @if (vessel.shipType) {
+          <dt>Type</dt>
+          <dd>{{ vessel.shipType }}</dd>
+        }
+        @if (vessel.speedOverGround !== null) {
+          <dt>Speed</dt>
+          <dd>{{ vessel.speedOverGround | number: '1.1-1' }} kn</dd>
+        }
+        @if (vessel.courseOverGround !== null) {
+          <dt>Course</dt>
+          <dd>{{ vessel.courseOverGround | number: '1.0-0' }}°</dd>
+        }
+        @if (navStatusLabel(vessel.navigationalStatus); as status) {
+          <dt>Status</dt>
+          <dd>{{ status }}</dd>
+        }
+        @if (vessel.destination) {
+          <dt>Destination</dt>
+          <dd>{{ vessel.destination }}</dd>
+        }
+        <dt>Position</dt>
+        <dd>{{ vessel.latitude | number: '1.4-4' }}, {{ vessel.longitude | number: '1.4-4' }}</dd>
+        <dt>Last update</dt>
+        <dd>{{ vessel.lastUpdate | date: 'HH:mm:ss' }}</dd>
+      </dl>
+    </section>
+  }
+
+  <ul class="vessel-list">
+    @for (vessel of filteredVessels(); track vessel.mmsi) {
+      <li
+        [class.active]="vesselService.selectedMmsi() === vessel.mmsi"
+        (click)="select(vessel.mmsi)"
+      >
+        <span class="name">{{ vessel.name || 'MMSI ' + vessel.mmsi }}</span>
+        <span class="meta">
+          {{ vessel.shipType || 'Unknown type' }}
+          @if (vessel.speedOverGround !== null) {
+            · {{ vessel.speedOverGround | number: '1.1-1' }} kn
+          }
+        </span>
+      </li>
+    } @empty {
+      <li class="empty">No vessels yet — waiting for the stream…</li>
+    }
+  </ul>
+</div>

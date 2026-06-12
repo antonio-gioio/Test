@@ -1,0 +1,69 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 1rem;
+  background: #0c4a6e;
+  color: #fff;
+  z-index: 1100;
+
+  h1 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+}
+
+.badges {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.badge {
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  background: #475569;
+  text-transform: capitalize;
+
+  &.live {
+    background: #15803d;
+  }
+
+  &.sim {
+    background: #b45309;
+  }
+
+  &.connected {
+    background: #15803d;
+  }
+
+  &.count {
+    background: #1d4ed8;
+  }
+}
+
+.layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+
+  aside {
+    width: 320px;
+    min-width: 320px;
+    border-right: 1px solid #e2e8f0;
+    background: #fff;
+    z-index: 1000;
+  }
+
+  main {
+    flex: 1;
+    min-width: 0;
+  }
+}

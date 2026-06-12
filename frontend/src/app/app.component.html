@@ -1,0 +1,23 @@
+<header class="topbar">
+  <h1>⚓ AIS Vessel Tracker</h1>
+  <div class="badges">
+    @if (vesselService.feedMode(); as mode) {
+      <span class="badge" [class.live]="mode === 'live'" [class.sim]="mode === 'simulation'">
+        {{ mode === 'live' ? 'Live aisstream.io feed' : 'Simulation mode' }}
+      </span>
+    }
+    <span class="badge" [class.connected]="vesselService.connectionState() === 'connected'">
+      {{ vesselService.connectionState() }}
+    </span>
+    <span class="badge count">{{ vesselService.vesselCount() }} vessels</span>
+  </div>
+</header>
+
+<div class="layout">
+  <aside>
+    <app-sidebar />
+  </aside>
+  <main>
+    <app-map />
+  </main>
+</div>
