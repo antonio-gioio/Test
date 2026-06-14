@@ -84,10 +84,24 @@ builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
 var app = builder.Build();
 
 // Apply migrations on startup so the schema (and PostGIS extension) is ready.
+// Retry briefly so the API can start alongside a database that is still booting.
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.Migrate();
+    var migrationLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    for (var attempt = 1; ; attempt++)
+    {
+        try
+        {
+            db.Database.Migrate();
+            break;
+        }
+        catch (Exception ex) when (attempt < 10)
+        {
+            migrationLogger.LogWarning(ex, "Database not ready (attempt {Attempt}); retrying in 3s", attempt);
+            Thread.Sleep(TimeSpan.FromSeconds(3));
+        }
+    }
 }
 
 app.UseCors();

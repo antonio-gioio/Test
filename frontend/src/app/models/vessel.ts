@@ -16,6 +16,21 @@ export interface Vessel {
 export interface FeedStatus {
   mode: 'live' | 'simulation';
   vesselCount: number;
+  tier: string;
+}
+
+export interface TrackPoint {
+  latitude: number;
+  longitude: number;
+  speedOverGround: number | null;
+  courseOverGround: number | null;
+  timestamp: string;
+}
+
+export interface VesselTrack {
+  mmsi: number;
+  windowHours: number;
+  points: TrackPoint[];
 }
 
 const NAV_STATUS: Record<number, string> = {

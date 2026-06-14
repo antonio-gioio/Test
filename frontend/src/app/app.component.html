@@ -6,18 +6,23 @@
         {{ mode === 'live' ? 'Live aisstream.io feed' : 'Simulation mode' }}
       </span>
     }
+    <span class="badge tier">{{ auth.tier() }}</span>
     <span class="badge" [class.connected]="vesselService.connectionState() === 'connected'">
       {{ vesselService.connectionState() }}
     </span>
-    <span class="badge count">{{ vesselService.vesselCount() }} vessels</span>
+    <span class="badge count">{{ vesselService.vesselCount() }} in view</span>
   </div>
 </header>
 
 <div class="layout">
   <aside>
+    <app-account />
     <app-sidebar />
   </aside>
   <main>
+    @if (vesselService.viewportMessage(); as message) {
+      <div class="viewport-banner">{{ message }}</div>
+    }
     <app-map />
   </main>
 </div>

@@ -1,0 +1,71 @@
+@if (auth.isLoggedIn() && auth.account(); as account) {
+  <div class="account">
+    <div class="row">
+      <span class="email">{{ account.email }}</span>
+      <button class="link" (click)="auth.logout()">Sign out</button>
+    </div>
+    <div class="tier-switch">
+      <span class="label">Plan:</span>
+      @for (tier of tiers; track tier) {
+        <button
+          class="tier"
+          [class.active]="account.tier === tier"
+          (click)="changeTier(tier)"
+        >
+          {{ tier }}
+        </button>
+      }
+    </div>
+    <dl class="limits">
+      <dt>Max area</dt>
+      <dd>
+        {{
+          account.limits.maxViewportAreaSqDegrees === null
+            ? 'Unlimited'
+            : account.limits.maxViewportAreaSqDegrees + ' sq°'
+        }}
+      </dd>
+      <dt>History</dt>
+      <dd>{{ account.limits.maxTrackHistoryHours }} h</dd>
+      <dt>Refresh</dt>
+      <dd>{{ account.limits.refreshCadence }}</dd>
+      <dt>Follow limit</dt>
+      <dd>{{ account.limits.maxFollowedVessels ?? 'Unlimited' }}</dd>
+    </dl>
+  </div>
+} @else {
+  <form class="auth-form" (ngSubmit)="submit()">
+    <div class="tabs">
+      <button type="button" [class.active]="mode() === 'login'" (click)="mode.set('login')">
+        Sign in
+      </button>
+      <button type="button" [class.active]="mode() === 'register'" (click)="mode.set('register')">
+        Register
+      </button>
+    </div>
+    <input
+      type="email"
+      placeholder="Email"
+      autocomplete="email"
+      [ngModel]="email()"
+      (ngModelChange)="email.set($event)"
+      name="email"
+      required
+    />
+    <input
+      type="password"
+      placeholder="Password (8+ chars, 1 uppercase)"
+      autocomplete="current-password"
+      [ngModel]="password()"
+      (ngModelChange)="password.set($event)"
+      name="password"
+      required
+    />
+    @if (error()) {
+      <p class="error">{{ error() }}</p>
+    }
+    <button type="submit" class="primary" [disabled]="busy()">
+      {{ mode() === 'login' ? 'Sign in' : 'Create account' }}
+    </button>
+  </form>
+}

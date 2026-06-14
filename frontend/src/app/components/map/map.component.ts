@@ -32,13 +32,13 @@ export class MapComponent implements AfterViewInit, OnDestroy {
 
   private map: L.Map | null = null;
   private readonly markers = new Map<number, L.Marker>();
-  private hasAutoFitted = false;
+  private trackLine: L.Polyline | null = null;
 
   constructor() {
     effect(() => {
       const batch = this.vesselService.lastBatch();
       if (this.map) {
-        this.updateMarkers(batch);
+        this.syncMarkers(batch);
       }
     });
 
@@ -47,14 +47,17 @@ export class MapComponent implements AfterViewInit, OnDestroy {
       if (this.map && vessel) {
         this.map.panTo([vessel.latitude, vessel.longitude]);
         this.markers.get(vessel.mmsi)?.openPopup();
+        this.loadTrack(vessel.mmsi);
+      } else if (!vessel) {
+        this.clearTrack();
       }
     });
   }
 
   ngAfterViewInit(): void {
     this.map = L.map(this.mapHost().nativeElement, {
-      center: [50.5, -1.0],
-      zoom: 7,
+      center: [50.5, -1.5],
+      zoom: 8,
       worldCopyJump: true,
     });
 
@@ -64,8 +67,10 @@ export class MapComponent implements AfterViewInit, OnDestroy {
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(this.map);
 
-    // Render anything that arrived before the map was ready.
-    this.updateMarkers(this.vesselService.vessels());
+    // Drive the server-side subscription from the visible bounds.
+    this.map.on('moveend', () => this.publishViewport());
+    this.publishViewport();
+    this.syncMarkers(this.vesselService.vessels());
   }
 
   ngOnDestroy(): void {
@@ -73,12 +78,34 @@ export class MapComponent implements AfterViewInit, OnDestroy {
     this.map = null;
   }
 
-  private updateMarkers(batch: Vessel[]): void {
+  private publishViewport(): void {
+    if (!this.map) {
+      return;
+    }
+    const b = this.map.getBounds();
+    this.vesselService.setViewport({
+      latMin: b.getSouth(),
+      lonMin: b.getWest(),
+      latMax: b.getNorth(),
+      lonMax: b.getEast(),
+    });
+  }
+
+  /** Replaces markers to match the current working set, removing vessels no longer present. */
+  private syncMarkers(updated: Vessel[]): void {
     if (!this.map) {
       return;
     }
 
-    for (const vessel of batch) {
+    const live = new Set(this.vesselService.vessels().map((v) => v.mmsi));
+    for (const [mmsi, marker] of this.markers) {
+      if (!live.has(mmsi)) {
+        marker.remove();
+        this.markers.delete(mmsi);
+      }
+    }
+
+    for (const vessel of updated) {
       const position: L.LatLngTuple = [vessel.latitude, vessel.longitude];
       const existing = this.markers.get(vessel.mmsi);
       if (existing) {
@@ -93,13 +120,28 @@ export class MapComponent implements AfterViewInit, OnDestroy {
         this.markers.set(vessel.mmsi, marker);
       }
     }
+  }
 
-    // Zoom to the data the first time something shows up.
-    if (!this.hasAutoFitted && this.markers.size > 0) {
-      this.hasAutoFitted = true;
-      const bounds = L.latLngBounds([...this.markers.values()].map((m) => m.getLatLng()));
-      this.map.fitBounds(bounds.pad(0.2), { maxZoom: 9 });
-    }
+  private loadTrack(mmsi: number): void {
+    this.vesselService.getTrack(mmsi).subscribe({
+      next: (track) => {
+        if (this.vesselService.selectedMmsi() !== mmsi) {
+          return;
+        }
+        this.clearTrack();
+        if (track.points.length > 1) {
+          const latlngs = track.points.map((p): L.LatLngTuple => [p.latitude, p.longitude]);
+          this.trackLine = L.polyline(latlngs, { color: '#dc2626', weight: 2, opacity: 0.8 });
+          this.trackLine.addTo(this.map!);
+        }
+      },
+      error: () => this.clearTrack(),
+    });
+  }
+
+  private clearTrack(): void {
+    this.trackLine?.remove();
+    this.trackLine = null;
   }
 
   private vesselIcon(vessel: Vessel): L.DivIcon {
