@@ -91,7 +91,17 @@ builder.Services.AddAuthorization();
 builder.Services.AddScoped<TokenService>();
 
 builder.Services.AddControllers();
-builder.Services.AddSignalR();
+builder.Services.AddSignalR(options =>
+{
+    // Tuned for many concurrent client connections.
+    options.MaximumReceiveMessageSize = 64 * 1024;
+    options.ClientTimeoutInterval = TimeSpan.FromSeconds(60);
+    options.KeepAliveInterval = TimeSpan.FromSeconds(15);
+});
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+    c.SwaggerDoc("v1", new() { Title = "AIS Vessel Tracker API", Version = "v1" }));
 
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
@@ -179,6 +189,9 @@ if (cluster.RunsIngestion)
 }
 
 app.UseExceptionHandler();
+
+app.UseSwagger();
+app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "AIS Vessel Tracker API v1"));
 
 if (!app.Environment.IsDevelopment())
 {

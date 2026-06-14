@@ -115,6 +115,7 @@ npm start         # http://localhost:4200, proxies /api and /hubs to the backend
 | `GET /api/status` | Feed mode, vessel count, caller tier |
 | `GET /health` | Liveness + database health check |
 | `GET /metrics` | Prometheus metrics |
+| `GET /swagger` | Interactive OpenAPI documentation |
 | `/hubs/vessels` | SignalR. `SubscribeViewport(bounds)` → warm snapshot + per-tile deltas; `FollowVessel` / `UnfollowVessel` (auth) |
 
 ## Clustering
