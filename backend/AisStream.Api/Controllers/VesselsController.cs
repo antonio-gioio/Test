@@ -69,6 +69,75 @@ public class VesselsController : ControllerBase
         return Ok(vessels);
     }
 
+    /// <summary>
+    /// Aggregated vessel clusters for a viewport, for low-zoom / wide-area views where
+    /// rendering every ship would be unusable. Vessels are snapped to a grid (cell size
+    /// derived from the map zoom) by PostGIS and returned as centroid + count per cell.
+    /// Available at any tier since it returns only aggregates, not individual positions.
+    /// </summary>
+    [HttpGet("clusters")]
+    public async Task<ActionResult<object>> GetClusters(
+        [FromQuery] double latMin,
+        [FromQuery] double lonMin,
+        [FromQuery] double latMax,
+        [FromQuery] double lonMax,
+        [FromQuery] int zoom)
+    {
+        var cell = ClusterCellDegrees(zoom);
+        var cutoff = DateTimeOffset.UtcNow - TimeSpan.FromMinutes(_options.VesselTtlMinutes);
+
+        const string sql = """
+            SELECT count(*)::bigint AS count,
+                   ST_Y(ST_Centroid(ST_Collect("Location"))) AS lat,
+                   ST_X(ST_Centroid(ST_Collect("Location"))) AS lon
+            FROM "Vessels"
+            WHERE "LastUpdate" >= @cutoff
+              AND "Location" && ST_MakeEnvelope(@lonMin, @latMin, @lonMax, @latMax, 4326)
+            GROUP BY ST_SnapToGrid("Location", @cell)
+            """;
+
+        await using var command = _db.Database.GetDbConnection().CreateCommand();
+        command.CommandText = sql;
+        AddParam(command, "cutoff", cutoff);
+        AddParam(command, "lonMin", lonMin);
+        AddParam(command, "latMin", latMin);
+        AddParam(command, "lonMax", lonMax);
+        AddParam(command, "latMax", latMax);
+        AddParam(command, "cell", cell);
+
+        await _db.Database.OpenConnectionAsync();
+        var clusters = new List<object>();
+        await using (var reader = await command.ExecuteReaderAsync())
+        {
+            while (await reader.ReadAsync())
+            {
+                clusters.Add(new
+                {
+                    count = reader.GetInt64(0),
+                    latitude = reader.GetDouble(1),
+                    longitude = reader.GetDouble(2),
+                });
+            }
+        }
+
+        return Ok(new { cellDegrees = cell, clusters });
+    }
+
+    private static void AddParam(System.Data.Common.DbCommand command, string name, object value)
+    {
+        var p = command.CreateParameter();
+        p.ParameterName = name;
+        p.Value = value;
+        command.Parameters.Add(p);
+    }
+
+    /// <summary>Grid cell size in degrees for a Leaflet zoom level (~64px clusters).</summary>
+    private static double ClusterCellDegrees(int zoom)
+    {
+        var z = Math.Clamp(zoom, 0, 20);
+        return 360.0 / (256.0 * Math.Pow(2, z)) * 64.0;
+    }
+
     /// <summary>Historical track for a vessel, limited to the caller's tier history window.</summary>
     [HttpGet("{mmsi:long}/track")]
     public async Task<ActionResult<object>> GetTrack(long mmsi, [FromQuery] double? hours)

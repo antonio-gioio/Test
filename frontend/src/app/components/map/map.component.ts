@@ -30,14 +30,19 @@ export class MapComponent implements AfterViewInit, OnDestroy {
   private readonly vesselService = inject(VesselService);
   private readonly mapHost = viewChild.required<ElementRef<HTMLDivElement>>('mapHost');
 
+  // Below this zoom the map shows server-aggregated clusters instead of individual ships.
+  private static readonly ClusterZoom = 9;
+
   private map: L.Map | null = null;
   private readonly markers = new Map<number, L.Marker>();
   private trackLine: L.Polyline | null = null;
+  private clusterLayer: L.LayerGroup | null = null;
+  private clusterMode = false;
 
   constructor() {
     effect(() => {
       const batch = this.vesselService.lastBatch();
-      if (this.map) {
+      if (this.map && !this.clusterMode) {
         this.syncMarkers(batch);
       }
     });
@@ -83,11 +88,68 @@ export class MapComponent implements AfterViewInit, OnDestroy {
       return;
     }
     const b = this.map.getBounds();
-    this.vesselService.setViewport({
+    const bounds = {
       latMin: b.getSouth(),
       lonMin: b.getWest(),
       latMax: b.getNorth(),
       lonMax: b.getEast(),
+    };
+
+    if (this.map.getZoom() < MapComponent.ClusterZoom) {
+      this.enterClusterMode(bounds);
+    } else {
+      this.exitClusterMode();
+      this.vesselService.setViewport(bounds);
+    }
+  }
+
+  private enterClusterMode(bounds: {
+    latMin: number;
+    lonMin: number;
+    latMax: number;
+    lonMax: number;
+  }): void {
+    this.clusterMode = true;
+    // Remove individual ship markers and any track; clusters take over.
+    for (const marker of this.markers.values()) {
+      marker.remove();
+    }
+    this.markers.clear();
+    this.clearTrack();
+    this.vesselService.clearLiveState();
+
+    const zoom = this.map!.getZoom();
+    this.vesselService.getClusters(bounds, zoom).subscribe({
+      next: (result) => {
+        if (!this.clusterMode) {
+          return;
+        }
+        this.clusterLayer?.remove();
+        this.clusterLayer = L.layerGroup();
+        for (const cluster of result.clusters) {
+          L.marker([cluster.latitude, cluster.longitude], {
+            icon: this.clusterIcon(cluster.count),
+          }).addTo(this.clusterLayer);
+        }
+        this.clusterLayer.addTo(this.map!);
+      },
+      error: () => this.exitClusterMode(),
+    });
+  }
+
+  private exitClusterMode(): void {
+    this.clusterMode = false;
+    this.clusterLayer?.remove();
+    this.clusterLayer = null;
+  }
+
+  private clusterIcon(count: number): L.DivIcon {
+    const size = Math.min(56, 26 + Math.round(Math.log10(count + 1) * 14));
+    return L.divIcon({
+      className: 'cluster-icon',
+      iconSize: [size, size],
+      iconAnchor: [size / 2, size / 2],
+      html: `<div class="cluster-bubble" style="width:${size}px;height:${size}px">${count}</div>`,
     });
   }
 

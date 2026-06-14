@@ -1,10 +1,13 @@
 using System.Text;
+using System.Threading.RateLimiting;
 using AisStream.Api.Auth;
 using AisStream.Api.Data;
 using AisStream.Api.Hubs;
+using AisStream.Api.Infrastructure;
 using AisStream.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
@@ -29,6 +32,15 @@ builder.Services
     .AddEntityFrameworkStores<AppDbContext>();
 
 var jwt = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
+
+// Refuse to start in Production with the insecure default signing key.
+if (builder.Environment.IsProduction() && jwt.Key.StartsWith("dev-only", StringComparison.Ordinal))
+{
+    throw new InvalidOperationException(
+        "Jwt:Key is still the insecure development default. Set a strong key " +
+        "(env var Jwt__Key) before running in Production.");
+}
+
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -67,6 +79,25 @@ builder.Services.AddScoped<TokenService>();
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
 
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<AppDbContext>("database");
+
+// Throttle auth endpoints to blunt credential-stuffing / brute force.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("auth", context => RateLimitPartition.GetFixedWindowLimiter(
+        partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        factory: _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 10,
+            Window = TimeSpan.FromMinutes(1),
+        }));
+});
+
 builder.Services.AddSingleton<VesselStore>();
 builder.Services.AddSingleton<VesselBroadcaster>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<VesselBroadcaster>());
@@ -75,8 +106,10 @@ builder.Services.AddHostedService<AisStreamWorker>();
 builder.Services.AddHostedService<VesselSimulator>();
 builder.Services.AddHostedService<VesselPruner>();
 
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    ?? ["http://localhost:4200"];
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
-    .WithOrigins("http://localhost:4200")
+    .WithOrigins(allowedOrigins)
     .AllowAnyHeader()
     .AllowAnyMethod()
     .AllowCredentials()));
@@ -104,11 +137,21 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+app.UseExceptionHandler();
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+}
+
 app.UseCors();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapControllers();
 app.MapHub<VesselHub>("/hubs/vessels");
+app.MapHealthChecks("/health");
 
 app.Run();
 

@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import * as signalR from '@microsoft/signalr';
 import { Observable } from 'rxjs';
-import { FeedStatus, Vessel, VesselTrack } from '../models/vessel';
+import { ClusterResult, FeedStatus, Vessel, VesselTrack } from '../models/vessel';
 import { AuthService } from './auth.service';
 
 export type ConnectionState = 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
@@ -73,6 +73,18 @@ export class VesselService {
   getTrack(mmsi: number, hours?: number): Observable<VesselTrack> {
     const query = hours ? `?hours=${hours}` : '';
     return this.http.get<VesselTrack>(`/api/vessels/${mmsi}/track${query}`);
+  }
+
+  getClusters(bounds: Bounds, zoom: number): Observable<ClusterResult> {
+    const q = `latMin=${bounds.latMin}&lonMin=${bounds.lonMin}&latMax=${bounds.latMax}&lonMax=${bounds.lonMax}&zoom=${zoom}`;
+    return this.http.get<ClusterResult>(`/api/vessels/clusters?${q}`);
+  }
+
+  /** Clears any live working set and tier message when the map switches to cluster mode. */
+  clearLiveState(): void {
+    this.vesselMap.set(new Map());
+    this.lastBatch.set([]);
+    this.viewportMessage.set(null);
   }
 
   private async reconnect(): Promise<void> {

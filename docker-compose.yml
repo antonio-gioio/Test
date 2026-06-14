@@ -19,18 +19,30 @@ services:
     build:
       context: ./backend/AisStream.Api
     environment:
-      # Override appsettings via env. Double underscore = nested config key.
       ConnectionStrings__Postgres: "Host=db;Port=5432;Database=aisstream;Username=postgres;Password=ais"
       ASPNETCORE_URLS: "http://+:5000"
-      # Set a strong key in real deployments.
-      Jwt__Key: "dev-only-insecure-signing-key-change-me-please-32+chars"
+      # The startup guard rejects the built-in dev key in Production. Override JWT_KEY
+      # with your own secret (>= 32 chars) in real deployments.
+      Jwt__Key: "${JWT_KEY:-please-change-this-demo-signing-key-32+chars-0xA1B2C3}"
+      # Requests arrive via the nginx frontend; allow that origin for CORS.
+      Cors__AllowedOrigins__0: "http://localhost:8080"
       # Provide an aisstream.io key to use the live feed instead of the simulator:
       # AISSTREAM__APIKEY: "your-key-here"
+    expose:
+      - "5000"
     ports:
       - "5000:5000"
     depends_on:
       db:
         condition: service_healthy
+
+  web:
+    build:
+      context: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
 
 volumes:
   ais-pgdata:

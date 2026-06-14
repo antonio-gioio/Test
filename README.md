@@ -57,11 +57,18 @@ would be driven by a billing webhook, not the client).
 ### Quick start (Docker)
 
 ```bash
-docker compose up --build
+JWT_KEY="a-strong-secret-at-least-32-characters-long" docker compose up --build
 ```
 
-Brings up PostGIS and the API (migrations run automatically). API on `http://localhost:5000`.
-Then start the frontend (below).
+Brings up the whole stack — PostGIS, the API, and the nginx-served Angular frontend
+(migrations run automatically):
+
+- App: <http://localhost:8080>
+- API: <http://localhost:5000> (health at `/health`)
+
+`JWT_KEY` is optional for the demo (a placeholder default is provided) but **must** be set
+to your own secret for any real deployment — the API refuses to start in Production with the
+built-in development key.
 
 ### Backend (without Docker)
 
@@ -98,6 +105,37 @@ npm start         # http://localhost:4200, proxies /api and /hubs to the backend
 | `GET /api/account/me` | Current account, tier limits, followed vessels |
 | `POST /api/account/tier` | Change tier, reissue token |
 | `GET /api/vessels?latMin&lonMin&latMax&lonMax` | Vessels in bounds (PostGIS, tier-gated) |
+| `GET /api/vessels/clusters?...&zoom=` | Grid-aggregated clusters for low-zoom/wide views |
 | `GET /api/vessels/{mmsi}/track?hours=` | Track history (clamped to tier window) |
 | `GET /api/status` | Feed mode, vessel count, caller tier |
+| `GET /health` | Liveness + database health check |
 | `/hubs/vessels` | SignalR. `SubscribeViewport(bounds)` → warm snapshot + per-tile deltas; `FollowVessel` / `UnfollowVessel` (auth) |
+
+## Clustering
+
+At low zoom (wide area) the frontend switches from individual ship markers to
+**server-side clusters**: PostGIS snaps vessels to a grid (cell size derived from the map
+zoom) and returns one centroid + count per cell, so a world view stays fast instead of
+rendering thousands of overlapping markers. Zooming in past the threshold returns to live,
+per-vessel streaming.
+
+## Production notes
+
+- **Health checks** at `/health` (includes a database probe) for liveness/readiness.
+- **Rate limiting** on the auth endpoints (fixed window per IP) to blunt brute-force.
+- **RFC 7807 ProblemDetails** for unhandled errors — no stack traces leak to clients.
+- **Secrets guard**: the API refuses to start in Production with the default JWT key; set
+  `Jwt__Key` (and a real `ConnectionStrings__Postgres`) via environment/secret store.
+- **CORS** origins are configurable via `Cors:AllowedOrigins`.
+- **CI** (`.github/workflows/ci.yml`) builds both projects and runs the backend test suite
+  against a PostGIS service container.
+
+## Tests
+
+```bash
+cd backend
+dotnet test          # 31 tests: tier logic, tile math, vessel store, and HTTP integration
+```
+
+Integration tests run against PostGIS. Point them at a database with the `TEST_POSTGRES`
+environment variable (defaults to the local development database).

@@ -33,6 +33,17 @@ export interface VesselTrack {
   points: TrackPoint[];
 }
 
+export interface Cluster {
+  latitude: number;
+  longitude: number;
+  count: number;
+}
+
+export interface ClusterResult {
+  cellDegrees: number;
+  clusters: Cluster[];
+}
+
 const NAV_STATUS: Record<number, string> = {
   0: 'Under way using engine',
   1: 'At anchor',
