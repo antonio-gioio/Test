@@ -1,0 +1,82 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ais
+      POSTGRES_DB: aisstream
+    ports:
+      - "5432:5432"
+    volumes:
+      - ais-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d aisstream"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Single ingestor: owns the one aisstream.io connection, writes to PostGIS,
+  # publishes vessel updates to Redis, and runs database migrations.
+  ingestor:
+    build:
+      context: ./backend/AisStream.Api
+    environment:
+      Cluster__Role: "Ingestor"
+      ConnectionStrings__Postgres: "Host=db;Port=5432;Database=aisstream;Username=postgres;Password=ais"
+      Redis__ConnectionString: "redis:6379"
+      ASPNETCORE_URLS: "http://+:5000"
+      Jwt__Key: "${JWT_KEY:-please-change-this-demo-signing-key-32+chars-0xA1B2C3}"
+      # Pick a data provider (default Auto -> Simulator). Examples:
+      #   Ais__Provider: "AisStream"      # free; then set Ais__AisStream__ApiKey
+      #   Ais__Provider: "Digitraffic"    # free, no key (Baltic)
+      #   Ais__Provider: "MarineTraffic"  # paid trial; set Ais__MarineTraffic__ApiKey
+      #   Ais__Provider: "Datalastic"     # paid trial; set Ais__Datalastic__ApiKey
+      # Ais__AisStream__ApiKey: "your-key-here"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Stateless web tier: consumes Redis, serves REST + SignalR. Scale with --scale web=N
+  # behind a sticky (session-affinity) load balancer for thousands of concurrent clients.
+  web:
+    build:
+      context: ./backend/AisStream.Api
+    environment:
+      Cluster__Role: "Web"
+      ConnectionStrings__Postgres: "Host=db;Port=5432;Database=aisstream;Username=postgres;Password=ais"
+      Redis__ConnectionString: "redis:6379"
+      ASPNETCORE_URLS: "http://+:5000"
+      Jwt__Key: "${JWT_KEY:-please-change-this-demo-signing-key-32+chars-0xA1B2C3}"
+      Cors__AllowedOrigins__0: "http://localhost:8080"
+    ports:
+      - "5000:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ingestor:
+        condition: service_started
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - web
+
+volumes:
+  ais-pgdata:

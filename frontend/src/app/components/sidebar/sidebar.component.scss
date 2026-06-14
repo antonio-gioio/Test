@@ -1,0 +1,136 @@
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.search {
+  margin: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  outline: none;
+
+  &:focus {
+    border-color: #0369a1;
+  }
+}
+
+.detail {
+  margin: 0 0.75rem 0.75rem;
+  padding: 0.75rem;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+
+  h2 {
+    margin: 0 0 0.5rem;
+    font-size: 1rem;
+    color: #0c4a6e;
+  }
+
+  dl {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.15rem 0.75rem;
+    margin: 0;
+    font-size: 0.82rem;
+  }
+
+  dt {
+    color: #64748b;
+  }
+
+  dd {
+    margin: 0;
+    color: #0f172a;
+  }
+}
+
+.global-results {
+  margin: 0 0.75rem 0.5rem;
+  padding: 0;
+  list-style: none;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  overflow: hidden;
+
+  .heading {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #0369a1;
+    background: #f0f9ff;
+  }
+
+  li:not(.heading) {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    padding: 0.45rem 0.6rem;
+    cursor: pointer;
+    border-top: 1px solid #e0f2fe;
+
+    &:hover {
+      background: #f1f5f9;
+    }
+  }
+
+  .name {
+    font-weight: 600;
+    font-size: 0.85rem;
+  }
+
+  .meta {
+    font-size: 0.76rem;
+    color: #64748b;
+  }
+}
+
+.vessel-list {
+  flex: 1;
+  margin: 0;
+  padding: 0 0.75rem 0.75rem;
+  list-style: none;
+  overflow-y: auto;
+
+  li {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    padding: 0.5rem 0.6rem;
+    border-radius: 6px;
+    cursor: pointer;
+
+    &:hover {
+      background: #f1f5f9;
+    }
+
+    &.active {
+      background: #e0f2fe;
+    }
+
+    &.empty {
+      color: #94a3b8;
+      cursor: default;
+
+      &:hover {
+        background: none;
+      }
+    }
+  }
+
+  .name {
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: #0f172a;
+  }
+
+  .meta {
+    font-size: 0.78rem;
+    color: #64748b;
+  }
+}

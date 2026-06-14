@@ -1,0 +1,91 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 1rem;
+  background: #0c4a6e;
+  color: #fff;
+  z-index: 1100;
+
+  h1 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+}
+
+.badges {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.badge {
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  background: #475569;
+  text-transform: capitalize;
+
+  &.live {
+    background: #15803d;
+  }
+
+  &.sim {
+    background: #b45309;
+  }
+
+  &.connected {
+    background: #15803d;
+  }
+
+  &.count {
+    background: #1d4ed8;
+  }
+}
+
+.layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+
+  aside {
+    width: 320px;
+    min-width: 320px;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #e2e8f0;
+    background: #fff;
+    z-index: 1000;
+    overflow-y: auto;
+  }
+
+  main {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.viewport-banner {
+  position: absolute;
+  top: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1200;
+  padding: 0.5rem 1rem;
+  background: #b45309;
+  color: #fff;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.badge.tier {
+  background: #7c3aed;
+}
