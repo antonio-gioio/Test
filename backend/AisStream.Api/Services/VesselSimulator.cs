@@ -1,4 +1,4 @@
-using AisStream.Api.Models;
+using AisStream.Api.Messaging;
 using Microsoft.Extensions.Options;
 
 namespace AisStream.Api.Services;
@@ -27,7 +27,7 @@ public class VesselSimulator : BackgroundService
 
     private readonly AisStreamOptions _options;
     private readonly VesselStore _store;
-    private readonly VesselBroadcaster _broadcaster;
+    private readonly IVesselBus _bus;
     private readonly ILogger<VesselSimulator> _logger;
     private readonly Random _random = new(42);
     private readonly List<SimulatedVessel> _fleet = [];
@@ -35,12 +35,12 @@ public class VesselSimulator : BackgroundService
     public VesselSimulator(
         IOptions<AisStreamOptions> options,
         VesselStore store,
-        VesselBroadcaster broadcaster,
+        IVesselBus bus,
         ILogger<VesselSimulator> logger)
     {
         _options = options.Value;
         _store = store;
-        _broadcaster = broadcaster;
+        _bus = bus;
         _logger = logger;
     }
 
@@ -73,7 +73,7 @@ public class VesselSimulator : BackgroundService
                     v.Destination = sim.Destination;
                     v.LastUpdate = DateTimeOffset.UtcNow;
                 });
-                _broadcaster.Enqueue(snapshot);
+                await _bus.PublishAsync(snapshot, stoppingToken);
             }
         }
     }

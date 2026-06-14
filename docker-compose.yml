@@ -15,34 +15,63 @@ services:
       timeout: 5s
       retries: 10
 
-  api:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Single ingestor: owns the one aisstream.io connection, writes to PostGIS,
+  # publishes vessel updates to Redis, and runs database migrations.
+  ingestor:
     build:
       context: ./backend/AisStream.Api
     environment:
+      Cluster__Role: "Ingestor"
       ConnectionStrings__Postgres: "Host=db;Port=5432;Database=aisstream;Username=postgres;Password=ais"
+      Redis__ConnectionString: "redis:6379"
       ASPNETCORE_URLS: "http://+:5000"
-      # The startup guard rejects the built-in dev key in Production. Override JWT_KEY
-      # with your own secret (>= 32 chars) in real deployments.
       Jwt__Key: "${JWT_KEY:-please-change-this-demo-signing-key-32+chars-0xA1B2C3}"
-      # Requests arrive via the nginx frontend; allow that origin for CORS.
+      # AISSTREAM__APIKEY: "your-key-here"  # set to use the live feed instead of the simulator
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Stateless web tier: consumes Redis, serves REST + SignalR. Scale with --scale web=N
+  # behind a sticky (session-affinity) load balancer for thousands of concurrent clients.
+  web:
+    build:
+      context: ./backend/AisStream.Api
+    environment:
+      Cluster__Role: "Web"
+      ConnectionStrings__Postgres: "Host=db;Port=5432;Database=aisstream;Username=postgres;Password=ais"
+      Redis__ConnectionString: "redis:6379"
+      ASPNETCORE_URLS: "http://+:5000"
+      Jwt__Key: "${JWT_KEY:-please-change-this-demo-signing-key-32+chars-0xA1B2C3}"
       Cors__AllowedOrigins__0: "http://localhost:8080"
-      # Provide an aisstream.io key to use the live feed instead of the simulator:
-      # AISSTREAM__APIKEY: "your-key-here"
-    expose:
-      - "5000"
     ports:
       - "5000:5000"
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+      ingestor:
+        condition: service_started
 
-  web:
+  frontend:
     build:
       context: ./frontend
     ports:
       - "8080:80"
     depends_on:
-      - api
+      - web
 
 volumes:
   ais-pgdata:

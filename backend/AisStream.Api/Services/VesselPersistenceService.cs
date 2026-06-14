@@ -1,14 +1,12 @@
 using AisStream.Api.Data;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 
 namespace AisStream.Api.Services;
 
 /// <summary>
-/// Bridges the in-memory hot cache to durable PostGIS storage. On startup it warms the
-/// cache from the database (so vessel names and positions survive restarts without
-/// re-incurring the AIS warm-up). Then it periodically flushes changed vessels back to
-/// the database as upserts, appends track-history points, and prunes old history.
+/// Flushes the in-memory hot cache to durable PostGIS storage. Runs only on the ingestor.
+/// Periodically writes changed vessels back to the database as upserts, appends track-history
+/// points, and prunes old history. (Cache warm-up lives in <see cref="VesselBusConsumer"/>.)
 /// </summary>
 public class VesselPersistenceService : BackgroundService
 {
@@ -17,26 +15,22 @@ public class VesselPersistenceService : BackgroundService
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly VesselStore _store;
-    private readonly AisStreamOptions _options;
     private readonly ILogger<VesselPersistenceService> _logger;
     private DateTimeOffset _lastTrackPrune = DateTimeOffset.MinValue;
 
     public VesselPersistenceService(
         IServiceScopeFactory scopeFactory,
         VesselStore store,
-        IOptions<AisStreamOptions> options,
         ILogger<VesselPersistenceService> logger)
     {
         _scopeFactory = scopeFactory;
         _store = store;
-        _options = options.Value;
         _logger = logger;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        await WarmCacheAsync(stoppingToken);
-
+        // Cache warm-up is handled by VesselBusConsumer (which runs on every node).
         using var timer = new PeriodicTimer(FlushInterval);
         while (await timer.WaitForNextTickAsync(stoppingToken))
         {
@@ -52,27 +46,6 @@ public class VesselPersistenceService : BackgroundService
             {
                 _logger.LogWarning(ex, "Vessel persistence flush failed");
             }
-        }
-    }
-
-    private async Task WarmCacheAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            using var scope = _scopeFactory.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var cutoff = DateTimeOffset.UtcNow - TimeSpan.FromMinutes(_options.VesselTtlMinutes);
-            var recent = await db.Vessels
-                .AsNoTracking()
-                .Where(v => v.LastUpdate >= cutoff)
-                .ToListAsync(cancellationToken);
-
-            _store.Seed(recent.Select(VesselMapping.ToDto));
-            _logger.LogInformation("Warmed cache with {Count} vessels from PostGIS", recent.Count);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Could not warm vessel cache from database");
         }
     }
 

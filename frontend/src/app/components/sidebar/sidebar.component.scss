@@ -49,6 +49,47 @@
   }
 }
 
+.global-results {
+  margin: 0 0.75rem 0.5rem;
+  padding: 0;
+  list-style: none;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  overflow: hidden;
+
+  .heading {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #0369a1;
+    background: #f0f9ff;
+  }
+
+  li:not(.heading) {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    padding: 0.45rem 0.6rem;
+    cursor: pointer;
+    border-top: 1px solid #e0f2fe;
+
+    &:hover {
+      background: #f1f5f9;
+    }
+  }
+
+  .name {
+    font-weight: 600;
+    font-size: 0.85rem;
+  }
+
+  .meta {
+    font-size: 0.76rem;
+    color: #64748b;
+  }
+}
+
 .vessel-list {
   flex: 1;
   margin: 0;

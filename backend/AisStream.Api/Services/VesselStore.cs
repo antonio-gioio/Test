@@ -37,14 +37,25 @@ public class VesselStore
         return vessel.Clone();
     }
 
-    /// <summary>Seeds the cache from durable storage without marking entries dirty.</summary>
+    /// <summary>
+    /// Seeds the cache from durable storage without marking entries dirty. Existing entries
+    /// are left untouched, so a live update that arrived before warm-up completes is never
+    /// clobbered by older database state.
+    /// </summary>
     public void Seed(IEnumerable<Vessel> vessels)
     {
         foreach (var vessel in vessels)
         {
-            _vessels[vessel.Mmsi] = vessel;
+            _vessels.TryAdd(vessel.Mmsi, vessel);
         }
     }
+
+    /// <summary>
+    /// Applies a full vessel snapshot received from the bus. Does not mark the entry dirty:
+    /// persistence is driven by the ingestor's own <see cref="Upsert"/> calls, not by every
+    /// node that merely caches the broadcast.
+    /// </summary>
+    public void Apply(Vessel vessel) => _vessels[vessel.Mmsi] = vessel;
 
     public bool TryGet(long mmsi, out Vessel vessel)
     {

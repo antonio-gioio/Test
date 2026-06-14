@@ -1,32 +1,34 @@
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using AisStream.Api.Messaging;
 using AisStream.Api.Models;
 using Microsoft.Extensions.Options;
 
 namespace AisStream.Api.Services;
 
 /// <summary>
-/// Connects to the aisstream.io WebSocket feed, subscribes with the configured
-/// API key and bounding boxes, and feeds incoming AIS messages into the
-/// vessel store and the SignalR broadcaster. Reconnects with backoff on failure.
+/// Connects to the aisstream.io WebSocket feed, subscribes with the configured API key and
+/// bounding boxes, merges incoming AIS messages into the vessel store, and publishes the
+/// merged snapshots to the vessel bus. Reconnects with backoff on failure. Runs only on the
+/// ingestor node (aisstream.io permits a single connection per key).
 /// </summary>
 public class AisStreamWorker : BackgroundService
 {
     private readonly AisStreamOptions _options;
     private readonly VesselStore _store;
-    private readonly VesselBroadcaster _broadcaster;
+    private readonly IVesselBus _bus;
     private readonly ILogger<AisStreamWorker> _logger;
 
     public AisStreamWorker(
         IOptions<AisStreamOptions> options,
         VesselStore store,
-        VesselBroadcaster broadcaster,
+        IVesselBus bus,
         ILogger<AisStreamWorker> logger)
     {
         _options = options.Value;
         _store = store;
-        _broadcaster = broadcaster;
+        _bus = bus;
         _logger = logger;
     }
 
@@ -105,15 +107,16 @@ public class AisStreamWorker : BackgroundService
             }
             while (!result.EndOfMessage);
 
-            HandleMessage(message.GetBuffer().AsSpan(0, (int)message.Length));
+            await HandleMessageAsync(message.GetBuffer().AsMemory(0, (int)message.Length), cancellationToken);
         }
     }
 
-    private void HandleMessage(ReadOnlySpan<byte> payload)
+    private async Task HandleMessageAsync(ReadOnlyMemory<byte> payload, CancellationToken cancellationToken)
     {
+        Vessel? updated = null;
         try
         {
-            using var doc = JsonDocument.Parse(payload.ToArray());
+            using var doc = JsonDocument.Parse(payload);
             var root = doc.RootElement;
 
             if (!root.TryGetProperty("MessageType", out var typeElement) ||
@@ -132,33 +135,37 @@ public class AisStreamWorker : BackgroundService
                 ? nameElement.GetString()?.Trim()
                 : null;
 
-            switch (typeElement.GetString())
+            updated = typeElement.GetString() switch
             {
-                case "PositionReport" when body.TryGetProperty("PositionReport", out var report):
-                    ApplyPositionReport(mmsi, shipName, report);
-                    break;
-                case "ShipStaticData" when body.TryGetProperty("ShipStaticData", out var staticData):
-                    ApplyStaticData(mmsi, shipName, staticData);
-                    break;
-            }
+                "PositionReport" when body.TryGetProperty("PositionReport", out var report) =>
+                    ApplyPositionReport(mmsi, shipName, report),
+                "ShipStaticData" when body.TryGetProperty("ShipStaticData", out var staticData) =>
+                    ApplyStaticData(mmsi, shipName, staticData),
+                _ => null,
+            };
         }
         catch (JsonException ex)
         {
             _logger.LogDebug(ex, "Skipping unparseable AIS message");
         }
+
+        if (updated is not null)
+        {
+            await _bus.PublishAsync(updated, cancellationToken);
+        }
     }
 
-    private void ApplyPositionReport(long mmsi, string? shipName, JsonElement report)
+    private Vessel? ApplyPositionReport(long mmsi, string? shipName, JsonElement report)
     {
         var latitude = GetDouble(report, "Latitude");
         var longitude = GetDouble(report, "Longitude");
         if (latitude is null || longitude is null)
         {
-            return;
+            return null;
         }
 
         var heading = GetDouble(report, "TrueHeading");
-        var vessel = _store.Upsert(mmsi, v =>
+        return _store.Upsert(mmsi, v =>
         {
             v.Latitude = latitude.Value;
             v.Longitude = longitude.Value;
@@ -174,13 +181,11 @@ public class AisStreamWorker : BackgroundService
 
             v.LastUpdate = DateTimeOffset.UtcNow;
         });
-
-        _broadcaster.Enqueue(vessel);
     }
 
-    private void ApplyStaticData(long mmsi, string? shipName, JsonElement staticData)
+    private Vessel ApplyStaticData(long mmsi, string? shipName, JsonElement staticData)
     {
-        _store.Upsert(mmsi, v =>
+        return _store.Upsert(mmsi, v =>
         {
             if (!string.IsNullOrEmpty(shipName))
             {
@@ -213,7 +218,6 @@ public class AisStreamWorker : BackgroundService
 
             v.LastUpdate = DateTimeOffset.UtcNow;
         });
-        // Static data carries no position; the next position report will broadcast it.
     }
 
     private static double? GetDouble(JsonElement element, string property) =>

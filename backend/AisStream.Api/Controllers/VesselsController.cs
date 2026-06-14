@@ -1,3 +1,4 @@
+using System.Text.Json;
 using AisStream.Api.Auth;
 using AisStream.Api.Data;
 using AisStream.Api.Models;
@@ -6,6 +7,7 @@ using AisStream.Api.Subscriptions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Options;
 using NetTopologySuite.Geometries;
 
@@ -18,13 +20,49 @@ public class VesselsController : ControllerBase
 {
     private readonly VesselStore _store;
     private readonly AppDbContext _db;
+    private readonly IDistributedCache _cache;
     private readonly AisStreamOptions _options;
 
-    public VesselsController(VesselStore store, AppDbContext db, IOptions<AisStreamOptions> options)
+    public VesselsController(
+        VesselStore store,
+        AppDbContext db,
+        IDistributedCache cache,
+        IOptions<AisStreamOptions> options)
     {
         _store = store;
         _db = db;
+        _cache = cache;
         _options = options.Value;
+    }
+
+    /// <summary>
+    /// Global vessel search by name (case-insensitive) or MMSI, across all tracked vessels —
+    /// not just the current viewport. Returns up to 25 recent matches.
+    /// </summary>
+    [HttpGet("search")]
+    public async Task<ActionResult<IReadOnlyList<Vessel>>> Search([FromQuery] string q)
+    {
+        var term = (q ?? string.Empty).Trim();
+        if (term.Length < 2)
+        {
+            return Ok(Array.Empty<Vessel>());
+        }
+
+        var cutoff = DateTimeOffset.UtcNow - TimeSpan.FromMinutes(_options.VesselTtlMinutes);
+        var pattern = $"%{term}%";
+        var query = _db.Vessels.AsNoTracking().Where(v => v.LastUpdate >= cutoff);
+
+        query = long.TryParse(term, out var mmsi)
+            ? query.Where(v => v.Mmsi == mmsi || (v.Name != null && EF.Functions.ILike(v.Name, pattern)))
+            : query.Where(v => v.Name != null && EF.Functions.ILike(v.Name, pattern));
+
+        var results = await query
+            .OrderBy(v => v.Name)
+            .Take(25)
+            .Select(v => VesselMapping.ToDto(v))
+            .ToListAsync();
+
+        return Ok(results);
     }
 
     /// <summary>
@@ -86,6 +124,15 @@ public class VesselsController : ControllerBase
         var cell = ClusterCellDegrees(zoom);
         var cutoff = DateTimeOffset.UtcNow - TimeSpan.FromMinutes(_options.VesselTtlMinutes);
 
+        // Short-TTL cache keyed by coarse bounds + zoom: at scale, many users panning the
+        // same area share one PostGIS aggregation instead of each triggering a query.
+        var cacheKey = $"clusters:{latMin:F1}:{lonMin:F1}:{latMax:F1}:{lonMax:F1}:{zoom}";
+        var cached = await _cache.GetStringAsync(cacheKey);
+        if (cached is not null)
+        {
+            return Content(cached, "application/json");
+        }
+
         const string sql = """
             SELECT count(*)::bigint AS count,
                    ST_Y(ST_Centroid(ST_Collect("Location"))) AS lat,
@@ -120,7 +167,12 @@ public class VesselsController : ControllerBase
             }
         }
 
-        return Ok(new { cellDegrees = cell, clusters });
+        var payload = JsonSerializer.Serialize(new { cellDegrees = cell, clusters });
+        await _cache.SetStringAsync(cacheKey, payload, new DistributedCacheEntryOptions
+        {
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(8),
+        });
+        return Content(payload, "application/json");
     }
 
     private static void AddParam(System.Data.Common.DbCommand command, string name, object value)

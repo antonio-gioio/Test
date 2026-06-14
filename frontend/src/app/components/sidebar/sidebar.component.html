@@ -2,10 +2,22 @@
   <input
     class="search"
     type="search"
-    placeholder="Search by name or MMSI…"
+    placeholder="Search all vessels by name or MMSI…"
     [ngModel]="search()"
-    (ngModelChange)="search.set($event)"
+    (ngModelChange)="onSearchChange($event)"
   />
+
+  @if (globalResults().length) {
+    <ul class="global-results">
+      <li class="heading">Global matches</li>
+      @for (vessel of globalResults(); track vessel.mmsi) {
+        <li (click)="selectGlobal(vessel)">
+          <span class="name">{{ vessel.name || 'MMSI ' + vessel.mmsi }}</span>
+          <span class="meta">{{ vessel.shipType || 'Unknown type' }} · {{ vessel.mmsi }}</span>
+        </li>
+      }
+    </ul>
+  }
 
   @if (vesselService.selectedVessel(); as vessel) {
     <section class="detail">

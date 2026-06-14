@@ -80,6 +80,20 @@ export class VesselService {
     return this.http.get<ClusterResult>(`/api/vessels/clusters?${q}`);
   }
 
+  /** Global server-side search across all tracked vessels (not just the viewport). */
+  searchGlobal(q: string): Observable<Vessel[]> {
+    return this.http.get<Vessel[]>(`/api/vessels/search?q=${encodeURIComponent(q)}`);
+  }
+
+  /** Selects a vessel found via global search, adding it to the working set so the map can show it. */
+  selectFromSearch(vessel: Vessel): void {
+    const next = new Map(this.vesselMap());
+    next.set(vessel.mmsi, vessel);
+    this.vesselMap.set(next);
+    this.lastBatch.set([vessel]);
+    this.selectedMmsi.set(vessel.mmsi);
+  }
+
   /** Clears any live working set and tier message when the map switches to cluster mode. */
   clearLiveState(): void {
     this.vesselMap.set(new Map());

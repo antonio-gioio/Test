@@ -101,6 +101,27 @@ public class ApiIntegrationTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task Search_short_query_returns_empty()
+    {
+        var client = _factory.CreateClient();
+        var res = await client.GetAsync("/api/vessels/search?q=a");
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        var body = await res.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(JsonValueKind.Array, body.ValueKind);
+        Assert.Equal(0, body.GetArrayLength());
+    }
+
+    [Fact]
+    public async Task Search_returns_a_json_array()
+    {
+        var client = _factory.CreateClient();
+        var res = await client.GetAsync("/api/vessels/search?q=MAERSK");
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        var body = await res.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(JsonValueKind.Array, body.ValueKind);
+    }
+
+    [Fact]
     public async Task Clusters_endpoint_returns_aggregates()
     {
         var client = _factory.CreateClient();
