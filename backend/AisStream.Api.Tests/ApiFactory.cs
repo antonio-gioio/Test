@@ -34,7 +34,7 @@ public class ApiFactory : WebApplicationFactory<Program>
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["ConnectionStrings:Postgres"] = ConnectionString,
-                ["AisStream:ApiKey"] = "", // simulation mode (but services are removed anyway)
+                ["Ais:Provider"] = "Simulator", // deterministic (hosted services are removed anyway)
             });
         });
 

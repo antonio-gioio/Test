@@ -36,7 +36,12 @@ services:
       Redis__ConnectionString: "redis:6379"
       ASPNETCORE_URLS: "http://+:5000"
       Jwt__Key: "${JWT_KEY:-please-change-this-demo-signing-key-32+chars-0xA1B2C3}"
-      # AISSTREAM__APIKEY: "your-key-here"  # set to use the live feed instead of the simulator
+      # Pick a data provider (default Auto -> Simulator). Examples:
+      #   Ais__Provider: "AisStream"      # free; then set Ais__AisStream__ApiKey
+      #   Ais__Provider: "Digitraffic"    # free, no key (Baltic)
+      #   Ais__Provider: "MarineTraffic"  # paid trial; set Ais__MarineTraffic__ApiKey
+      #   Ais__Provider: "Datalastic"     # paid trial; set Ais__Datalastic__ApiKey
+      # Ais__AisStream__ApiKey: "your-key-here"
     depends_on:
       db:
         condition: service_healthy

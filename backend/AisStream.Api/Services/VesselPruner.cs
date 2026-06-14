@@ -1,3 +1,4 @@
+using AisStream.Api.Ingestion;
 using Microsoft.Extensions.Options;
 
 namespace AisStream.Api.Services;
@@ -6,10 +7,10 @@ namespace AisStream.Api.Services;
 public class VesselPruner : BackgroundService
 {
     private readonly VesselStore _store;
-    private readonly AisStreamOptions _options;
+    private readonly IngestionOptions _options;
     private readonly ILogger<VesselPruner> _logger;
 
-    public VesselPruner(VesselStore store, IOptions<AisStreamOptions> options, ILogger<VesselPruner> logger)
+    public VesselPruner(VesselStore store, IOptions<IngestionOptions> options, ILogger<VesselPruner> logger)
     {
         _store = store;
         _options = options.Value;

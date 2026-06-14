@@ -25,20 +25,14 @@ public class VesselSimulator : BackgroundService
     private static readonly string[] Destinations =
         ["ROTTERDAM", "SINGAPORE", "SHANGHAI", "HAMBURG", "NEW YORK", "ANTWERP", "FELIXSTOWE", "GENOA"];
 
-    private readonly AisStreamOptions _options;
     private readonly VesselStore _store;
     private readonly IVesselBus _bus;
     private readonly ILogger<VesselSimulator> _logger;
     private readonly Random _random = new(42);
     private readonly List<SimulatedVessel> _fleet = [];
 
-    public VesselSimulator(
-        IOptions<AisStreamOptions> options,
-        VesselStore store,
-        IVesselBus bus,
-        ILogger<VesselSimulator> logger)
+    public VesselSimulator(VesselStore store, IVesselBus bus, ILogger<VesselSimulator> logger)
     {
-        _options = options.Value;
         _store = store;
         _bus = bus;
         _logger = logger;
@@ -46,11 +40,6 @@ public class VesselSimulator : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        if (!string.IsNullOrWhiteSpace(_options.ApiKey))
-        {
-            return; // Live feed configured; nothing to simulate.
-        }
-
         _logger.LogInformation("Simulation mode: generating {Count} fake vessels in the English Channel area", Names.Length);
         SpawnFleet();
 

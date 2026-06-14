@@ -4,6 +4,8 @@ using AisStream.Api.Auth;
 using AisStream.Api.Data;
 using AisStream.Api.Hubs;
 using AisStream.Api.Infrastructure;
+using AisStream.Api.Ingestion;
+using AisStream.Api.Ingestion.Providers;
 using AisStream.Api.Messaging;
 using AisStream.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -16,10 +18,20 @@ using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.Configure<AisStreamOptions>(
-    builder.Configuration.GetSection(AisStreamOptions.SectionName));
+builder.Services.Configure<IngestionOptions>(builder.Configuration.GetSection(IngestionOptions.SectionName));
+builder.Services.Configure<AisStreamOptions>(builder.Configuration.GetSection(AisStreamOptions.SectionName));
+builder.Services.Configure<DigitrafficOptions>(builder.Configuration.GetSection(DigitrafficOptions.SectionName));
+builder.Services.Configure<MarineTrafficOptions>(builder.Configuration.GetSection(MarineTrafficOptions.SectionName));
+builder.Services.Configure<DatalasticOptions>(builder.Configuration.GetSection(DatalasticOptions.SectionName));
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
 builder.Services.Configure<ClusterOptions>(builder.Configuration.GetSection(ClusterOptions.SectionName));
+
+// Resolve which AIS data source is active (Auto picks AisStream if its key is set).
+var ingestion = builder.Configuration.GetSection(IngestionOptions.SectionName).Get<IngestionOptions>() ?? new IngestionOptions();
+var aisStreamKey = builder.Configuration[$"{AisStreamOptions.SectionName}:ApiKey"];
+var activeProvider = ingestion.Resolve(!string.IsNullOrWhiteSpace(aisStreamKey));
+builder.Services.AddSingleton(new ActiveProvider(activeProvider));
+builder.Services.AddHttpClient();
 
 var cluster = builder.Configuration.GetSection(ClusterOptions.SectionName).Get<ClusterOptions>() ?? new ClusterOptions();
 var redis = builder.Configuration.GetSection(RedisOptions.SectionName).Get<RedisOptions>() ?? new RedisOptions();
@@ -147,13 +159,36 @@ if (cluster.RunsRealtime)
     builder.Services.AddHostedService(sp => sp.GetRequiredService<VesselBroadcaster>());
 }
 
-// Only the ingestor talks to aisstream.io and writes to the database.
+// Only the ingestor connects to the AIS source and writes to the database.
 if (cluster.RunsIngestion)
 {
     builder.Services.AddHostedService<VesselPersistenceService>();
-    builder.Services.AddHostedService<AisStreamWorker>();
-    builder.Services.AddHostedService<VesselSimulator>();
     builder.Services.AddHostedService<VesselPruner>();
+
+    if (activeProvider == AisProviderType.Simulator)
+    {
+        builder.Services.AddHostedService<VesselSimulator>();
+    }
+    else
+    {
+        switch (activeProvider)
+        {
+            case AisProviderType.AisStream:
+                builder.Services.AddSingleton<IAisProvider, AisStreamProvider>();
+                break;
+            case AisProviderType.Digitraffic:
+                builder.Services.AddSingleton<IAisProvider, DigitrafficProvider>();
+                break;
+            case AisProviderType.MarineTraffic:
+                builder.Services.AddSingleton<IAisProvider, MarineTrafficProvider>();
+                break;
+            case AisProviderType.Datalastic:
+                builder.Services.AddSingleton<IAisProvider, DatalasticProvider>();
+                break;
+        }
+
+        builder.Services.AddHostedService<AisIngestionWorker>();
+    }
 }
 
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()

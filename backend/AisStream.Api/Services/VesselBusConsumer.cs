@@ -1,4 +1,5 @@
 using AisStream.Api.Data;
+using AisStream.Api.Ingestion;
 using AisStream.Api.Messaging;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -16,7 +17,7 @@ public class VesselBusConsumer : BackgroundService
     private readonly VesselStore _store;
     private readonly VesselBroadcaster _broadcaster;
     private readonly ClusterOptions _cluster;
-    private readonly AisStreamOptions _options;
+    private readonly IngestionOptions _options;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<VesselBusConsumer> _logger;
 
@@ -25,7 +26,7 @@ public class VesselBusConsumer : BackgroundService
         VesselStore store,
         VesselBroadcaster broadcaster,
         IOptions<ClusterOptions> cluster,
-        IOptions<AisStreamOptions> options,
+        IOptions<IngestionOptions> options,
         IServiceScopeFactory scopeFactory,
         ILogger<VesselBusConsumer> logger)
     {

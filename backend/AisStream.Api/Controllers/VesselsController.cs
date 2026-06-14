@@ -1,6 +1,7 @@
 using System.Text.Json;
 using AisStream.Api.Auth;
 using AisStream.Api.Data;
+using AisStream.Api.Ingestion;
 using AisStream.Api.Models;
 using AisStream.Api.Services;
 using AisStream.Api.Subscriptions;
@@ -21,18 +22,21 @@ public class VesselsController : ControllerBase
     private readonly VesselStore _store;
     private readonly AppDbContext _db;
     private readonly IDistributedCache _cache;
-    private readonly AisStreamOptions _options;
+    private readonly IngestionOptions _options;
+    private readonly ActiveProvider _provider;
 
     public VesselsController(
         VesselStore store,
         AppDbContext db,
         IDistributedCache cache,
-        IOptions<AisStreamOptions> options)
+        IOptions<IngestionOptions> options,
+        ActiveProvider provider)
     {
         _store = store;
         _db = db;
         _cache = cache;
         _options = options.Value;
+        _provider = provider;
     }
 
     /// <summary>
@@ -222,7 +226,8 @@ public class VesselsController : ControllerBase
     [HttpGet("/api/status")]
     public object GetStatus() => new
     {
-        Mode = string.IsNullOrWhiteSpace(_options.ApiKey) ? "simulation" : "live",
+        Mode = _provider.IsSimulated ? "simulation" : "live",
+        Provider = _provider.Type.ToString(),
         VesselCount = _store.Count,
         Tier = TokenService.TierOf(User).ToString(),
     };

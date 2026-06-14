@@ -1,7 +1,9 @@
 # AIS Vessel Tracker
 
-A live ship-tracking website built on the [aisstream.io](https://aisstream.io) AIS data feed,
-with a persistent spatial backend and tiered user subscriptions.
+A live ship-tracking website with **pluggable AIS data providers**, a persistent spatial
+backend, and tiered user subscriptions. Switch data sources with one config setting — no
+code change — across a built-in simulator, two free feeds, and two paid feeds (each with a
+free trial).
 
 - **Backend** — C# / ASP.NET Core 8 (`backend/AisStream.Api`). Consumes the aisstream.io
   WebSocket once, server-side, into a warm in-memory cache backed by **PostGIS**. Streams
@@ -37,6 +39,40 @@ The cache is always warm and persisted, so a new user gets an **instant snapshot
 area instead of waiting minutes for the stream to fill in, and vessel names survive restarts.
 Clients subscribe to *the server* by map viewport; the server filters spatially (PostGIS GIST
 index) and fans out only the relevant tiles, at the refresh rate the user's plan allows.
+
+## AIS data providers
+
+Ingestion sits behind an `IAisProvider` interface, so the data source is swappable via
+`Ais:Provider` (env var `Ais__Provider`). All providers normalize into the same internal
+update model, so the rest of the system (storage, streaming, clustering) is unchanged.
+
+| Provider | Cost | Transport | Coverage | Notes |
+| --- | --- | --- | --- | --- |
+| `Simulator` | Free | — | Fake fleet | Default fallback; no account needed |
+| `AisStream` | **Free** | WebSocket | Terrestrial, global coastal | Key from [aisstream.io](https://aisstream.io) |
+| `Digitraffic` | **Free** | MQTT | Baltic / Finnish waters | Open data, no credentials ([Digitraffic](https://www.digitraffic.fi/en/marine-traffic/)) |
+| `MarineTraffic` | Paid · free trial | REST (polled) | Global (terrestrial + satellite) | Trial credits; key for the PS07 API |
+| `Datalastic` | Paid · free trial | REST (polled) | Global | [Free trial](https://datalastic.com) key |
+
+`Auto` (the default) uses AisStream if its API key is set, otherwise the Simulator. Select and
+configure a provider in `appsettings.json` under `Ais`, e.g.:
+
+```jsonc
+"Ais": {
+  "Provider": "MarineTraffic",
+  "MarineTraffic": { "ApiKey": "YOUR_TRIAL_KEY" }
+}
+```
+
+or via environment variables (handy for trials):
+
+```bash
+Ais__Provider=Datalastic  Ais__Datalastic__ApiKey=YOUR_TRIAL_KEY  dotnet run
+```
+
+`GET /api/status` reports the active provider. The two free feeds (AisStream, Digitraffic) and
+the simulator are verified; the paid providers are implemented to their documented REST shapes
+and need your trial key to exercise the live response.
 
 ## Subscription tiers
 
