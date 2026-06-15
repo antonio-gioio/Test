@@ -34,7 +34,7 @@ public class AuthController : ControllerBase
             return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
         }
 
-        return Issue(user);
+        return await IssueAsync(user);
     }
 
     [HttpPost("login")]
@@ -46,12 +46,13 @@ public class AuthController : ControllerBase
             return Unauthorized(new { error = "Invalid email or password." });
         }
 
-        return Issue(user);
+        return await IssueAsync(user);
     }
 
-    private ActionResult<AuthResponse> Issue(ApplicationUser user)
+    private async Task<ActionResult<AuthResponse>> IssueAsync(ApplicationUser user)
     {
-        var (token, expiresAt) = _tokenService.CreateToken(user);
+        var roles = await _userManager.GetRolesAsync(user);
+        var (token, expiresAt) = _tokenService.CreateToken(user, roles);
         return Ok(new AuthResponse(token, expiresAt, user.Email!, user.Tier.ToString()));
     }
 }

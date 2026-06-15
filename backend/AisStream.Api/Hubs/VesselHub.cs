@@ -36,6 +36,18 @@ public class VesselHub : Hub
         _logger = logger;
     }
 
+    public override async Task OnConnectedAsync()
+    {
+        // Authenticated connections join a per-user group so geofence alerts can be targeted.
+        var userId = Context.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!string.IsNullOrEmpty(userId))
+        {
+            await Groups.AddToGroupAsync(Context.ConnectionId, $"user:{userId}");
+        }
+
+        await base.OnConnectedAsync();
+    }
+
     public async Task<ViewportResult> SubscribeViewport(double latMin, double lonMin, double latMax, double lonMax)
     {
         var tier = TokenService.TierOf(Context.User);

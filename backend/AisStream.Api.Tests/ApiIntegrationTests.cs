@@ -22,6 +22,81 @@ public class ApiIntegrationTests : IClassFixture<ApiFactory>
         return (client, token);
     }
 
+    private async Task<string> AdminTokenAsync(HttpClient client)
+    {
+        var res = await client.PostAsJsonAsync("/api/auth/login",
+            new { email = "admin@aisstream.local", password = "Admin123!" });
+        res.EnsureSuccessStatusCode();
+        return (await res.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("token").GetString()!;
+    }
+
+    private static HttpRequestMessage Get(string url, string token) => Authed(HttpMethod.Get, url, token);
+
+    [Fact]
+    public async Task Seeded_admin_can_reach_admin_endpoints()
+    {
+        var client = _factory.CreateClient();
+        var token = await AdminTokenAsync(client);
+
+        var users = await client.SendAsync(Get("/api/admin/users", token));
+        Assert.Equal(HttpStatusCode.OK, users.StatusCode);
+
+        var stats = await client.SendAsync(Get("/api/admin/stats", token));
+        Assert.Equal(HttpStatusCode.OK, stats.StatusCode);
+        var body = await stats.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(body.GetProperty("totalUsers").GetInt32() >= 1);
+    }
+
+    [Fact]
+    public async Task Non_admin_is_forbidden_from_admin_endpoints()
+    {
+        var (client, token) = await RegisteredClientAsync();
+        var res = await client.SendAsync(Get("/api/admin/users", token));
+        Assert.Equal(HttpStatusCode.Forbidden, res.StatusCode);
+    }
+
+    [Fact]
+    public async Task Account_me_reports_admin_flag()
+    {
+        var client = _factory.CreateClient();
+        var token = await AdminTokenAsync(client);
+        var me = await client.SendAsync(Get("/api/account/me", token));
+        var body = await me.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(body.GetProperty("isAdmin").GetBoolean());
+    }
+
+    [Fact]
+    public async Task Watch_area_create_list_and_delete()
+    {
+        var (client, token) = await RegisteredClientAsync();
+
+        var create = await client.SendAsync(Authed(HttpMethod.Post, "/api/watch-areas", token,
+            JsonContent.Create(new { name = "Channel", latMin = 50, lonMin = -2, latMax = 51, lonMax = 0 })));
+        Assert.Equal(HttpStatusCode.OK, create.StatusCode);
+        var id = (await create.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+
+        var list = await client.SendAsync(Get("/api/watch-areas", token));
+        var areas = await list.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(1, areas.GetArrayLength());
+
+        var matches = await client.SendAsync(Get("/api/watch-areas/matches", token));
+        Assert.Equal(HttpStatusCode.OK, matches.StatusCode);
+
+        var del = await client.SendAsync(Authed(HttpMethod.Delete, $"/api/watch-areas/{id}", token));
+        Assert.Equal(HttpStatusCode.NoContent, del.StatusCode);
+    }
+
+    [Fact]
+    public async Task Vessel_stats_endpoint_returns_breakdown()
+    {
+        var client = _factory.CreateClient();
+        var res = await client.GetAsync("/api/vessels/stats");
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        var body = await res.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(body.TryGetProperty("total", out _));
+        Assert.True(body.TryGetProperty("byShipType", out _));
+    }
+
     [Fact]
     public async Task Health_endpoint_reports_healthy()
     {

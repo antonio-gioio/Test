@@ -12,6 +12,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<VesselEntity> Vessels => Set<VesselEntity>();
     public DbSet<VesselTrackPoint> TrackPoints => Set<VesselTrackPoint>();
     public DbSet<FollowedVessel> FollowedVessels => Set<FollowedVessel>();
+    public DbSet<WatchArea> WatchAreas => Set<WatchArea>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -42,6 +43,16 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.HasOne(f => f.User)
                 .WithMany(u => u.FollowedVessels)
                 .HasForeignKey(f => f.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<WatchArea>(entity =>
+        {
+            entity.HasKey(w => w.Id);
+            entity.HasIndex(w => w.UserId);
+            entity.HasOne(w => w.User)
+                .WithMany()
+                .HasForeignKey(w => w.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

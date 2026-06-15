@@ -49,12 +49,15 @@ var connectionString = builder.Configuration.GetConnectionString("Postgres")
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString, npgsql => npgsql.UseNetTopologySuite()));
 
+builder.Services.Configure<AdminOptions>(builder.Configuration.GetSection(AdminOptions.SectionName));
+
 builder.Services
     .AddIdentityCore<ApplicationUser>(options =>
     {
         options.User.RequireUniqueEmail = true;
         options.Password.RequireNonAlphanumeric = false;
     })
+    .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<AppDbContext>();
 
 var jwt = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
@@ -157,6 +160,7 @@ builder.Services.AddHostedService<VesselBusConsumer>();
 if (cluster.RunsRealtime)
 {
     builder.Services.AddHostedService(sp => sp.GetRequiredService<VesselBroadcaster>());
+    builder.Services.AddHostedService<WatchAreaAlertService>();
 }
 
 // Only the ingestor connects to the AIS source and writes to the database.
@@ -221,6 +225,8 @@ if (cluster.RunsIngestion)
             Thread.Sleep(TimeSpan.FromSeconds(3));
         }
     }
+
+    await DataSeeder.SeedAsync(scope.ServiceProvider, migrationLogger);
 }
 
 app.UseExceptionHandler();

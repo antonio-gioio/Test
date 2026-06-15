@@ -69,6 +69,69 @@ public class VesselsController : ControllerBase
         return Ok(results);
     }
 
+    /// <summary>Live fleet statistics from the warm cache: totals and breakdowns by type/status.</summary>
+    [HttpGet("stats")]
+    public ActionResult<object> Stats()
+    {
+        var vessels = _store.Snapshot(TimeSpan.FromMinutes(_options.VesselTtlMinutes));
+        var moving = vessels.Count(v => (v.SpeedOverGround ?? 0) > 0.5);
+
+        return Ok(new
+        {
+            total = vessels.Count,
+            moving,
+            stopped = vessels.Count - moving,
+            byShipType = vessels
+                .GroupBy(v => v.ShipType ?? "Unknown")
+                .OrderByDescending(g => g.Count())
+                .ToDictionary(g => g.Key, g => g.Count()),
+            withDestination = vessels.Count(v => !string.IsNullOrEmpty(v.Destination)),
+        });
+    }
+
+    /// <summary>Exports the vessels in a viewport as CSV (tier-gated, same as the JSON endpoint).</summary>
+    [HttpGet("export")]
+    public async Task<IActionResult> Export(
+        [FromQuery] double latMin,
+        [FromQuery] double lonMin,
+        [FromQuery] double latMax,
+        [FromQuery] double lonMax)
+    {
+        var bounds = new Bounds(latMin, lonMin, latMax, lonMax);
+        var limits = TierLimits.For(TokenService.TierOf(User));
+        if (bounds.AreaSqDegrees > limits.MaxViewportAreaSqDegrees)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { error = "Requested area exceeds your plan limit." });
+        }
+
+        var vessels = await QueryBoundsAsync(bounds);
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("mmsi,name,latitude,longitude,speedKn,courseDeg,shipType,destination,lastUpdate");
+        foreach (var v in vessels)
+        {
+            sb.Append(v.Mmsi).Append(',')
+              .Append(Csv(v.Name)).Append(',')
+              .Append(v.Latitude.ToString("0.#####")).Append(',')
+              .Append(v.Longitude.ToString("0.#####")).Append(',')
+              .Append(v.SpeedOverGround?.ToString("0.#") ?? "").Append(',')
+              .Append(v.CourseOverGround?.ToString("0") ?? "").Append(',')
+              .Append(Csv(v.ShipType)).Append(',')
+              .Append(Csv(v.Destination)).Append(',')
+              .Append(v.LastUpdate.ToString("o"))
+              .Append('\n');
+        }
+
+        return File(System.Text.Encoding.UTF8.GetBytes(sb.ToString()), "text/csv", "vessels.csv");
+    }
+
+    private static string Csv(string? value)
+    {
+        if (string.IsNullOrEmpty(value)) return "";
+        return value.Contains(',') || value.Contains('"')
+            ? $"\"{value.Replace("\"", "\"\"")}\""
+            : value;
+    }
+
     /// <summary>
     /// Vessels inside the given bounds, gated by the caller's tier viewport-area limit.
     /// Backed by the PostGIS GIST index via an envelope query so it stays fast at scale.
@@ -98,17 +161,20 @@ public class VesselsController : ControllerBase
             });
         }
 
+        return Ok(await QueryBoundsAsync(bounds));
+    }
+
+    private async Task<List<Vessel>> QueryBoundsAsync(Bounds bounds)
+    {
         var envelope = VesselMapping.GeometryFactory.ToGeometry(
             new Envelope(bounds.LonMin, bounds.LonMax, bounds.LatMin, bounds.LatMax));
-        var cutoff = DateTimeOffset.UtcNow - maxAge;
+        var cutoff = DateTimeOffset.UtcNow - TimeSpan.FromMinutes(_options.VesselTtlMinutes);
 
-        var vessels = await _db.Vessels
+        return await _db.Vessels
             .AsNoTracking()
             .Where(v => v.LastUpdate >= cutoff && envelope.Contains(v.Location))
             .Select(v => VesselMapping.ToDto(v))
             .ToListAsync();
-
-        return Ok(vessels);
     }
 
     /// <summary>
@@ -194,9 +260,12 @@ public class VesselsController : ControllerBase
         return 360.0 / (256.0 * Math.Pow(2, z)) * 64.0;
     }
 
-    /// <summary>Historical track for a vessel, limited to the caller's tier history window.</summary>
+    /// <summary>
+    /// Historical track for a vessel, limited to the caller's tier history window. Pass
+    /// format=geojson to get a GeoJSON LineString Feature (e.g. for GIS tools / download).
+    /// </summary>
     [HttpGet("{mmsi:long}/track")]
-    public async Task<ActionResult<object>> GetTrack(long mmsi, [FromQuery] double? hours)
+    public async Task<ActionResult<object>> GetTrack(long mmsi, [FromQuery] double? hours, [FromQuery] string? format)
     {
         var limits = TierLimits.For(TokenService.TierOf(User));
         var requested = hours is null ? limits.MaxTrackHistory : TimeSpan.FromHours(hours.Value);
@@ -219,6 +288,22 @@ public class VesselsController : ControllerBase
                 timestamp = t.Timestamp,
             })
             .ToListAsync();
+
+        if (string.Equals(format, "geojson", StringComparison.OrdinalIgnoreCase))
+        {
+            var geojson = new
+            {
+                type = "Feature",
+                properties = new { mmsi, windowHours = requested.TotalHours },
+                geometry = new
+                {
+                    type = "LineString",
+                    coordinates = points.Select(p => new[] { p.longitude, p.latitude }).ToArray(),
+                },
+            };
+            return File(System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(geojson)),
+                "application/geo+json", $"track-{mmsi}.geojson");
+        }
 
         return Ok(new { mmsi, windowHours = requested.TotalHours, points });
     }

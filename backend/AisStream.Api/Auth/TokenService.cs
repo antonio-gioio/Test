@@ -17,7 +17,7 @@ public class TokenService
 
     public TokenService(IOptions<JwtOptions> options) => _options = options.Value;
 
-    public (string Token, DateTime ExpiresAt) CreateToken(ApplicationUser user)
+    public (string Token, DateTime ExpiresAt) CreateToken(ApplicationUser user, IEnumerable<string>? roles = null)
     {
         var expiresAt = DateTime.UtcNow.AddHours(_options.ExpiryHours);
         var claims = new List<Claim>
@@ -27,6 +27,11 @@ public class TokenService
             new(ClaimTypes.NameIdentifier, user.Id),
             new(TierClaim, user.Tier.ToString()),
         };
+
+        foreach (var role in roles ?? Enumerable.Empty<string>())
+        {
+            claims.Add(new Claim(ClaimTypes.Role, role));
+        }
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.Key));
         var token = new JwtSecurityToken(
