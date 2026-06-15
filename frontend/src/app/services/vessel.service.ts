@@ -2,7 +2,14 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import * as signalR from '@microsoft/signalr';
 import { Observable } from 'rxjs';
-import { ClusterResult, FeedStatus, Vessel, VesselTrack } from '../models/vessel';
+import {
+  AreaAlert,
+  ClusterResult,
+  FeedStatus,
+  FleetStats,
+  Vessel,
+  VesselTrack,
+} from '../models/vessel';
 import { AuthService } from './auth.service';
 
 export type ConnectionState = 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
@@ -48,11 +55,19 @@ export class VesselService {
     return mmsi === null ? null : (this.vesselMap().get(mmsi) ?? null);
   });
 
+  /** Recent geofence alerts (most recent first), pushed over SignalR. */
+  readonly alerts = signal<AreaAlert[]>([]);
+  /** Live positions of the current user's followed vessels. */
+  readonly followed = signal<Vessel[]>([]);
+  /** The map's current visible bounds (for "watch this area" etc.). */
+  readonly currentBounds = signal<Bounds | null>(null);
+
   constructor() {
     // Reconnect whenever the auth token changes so the hub sees the new tier.
     effect(() => {
       this.auth.tokenVersion();
       this.reconnect();
+      this.loadFollowed();
     });
   }
 
@@ -67,6 +82,7 @@ export class VesselService {
   /** Called by the map when the visible bounds change; re-subscribes to the new area. */
   setViewport(bounds: Bounds): void {
     this.lastBounds = bounds;
+    this.currentBounds.set(bounds);
     void this.subscribeViewport();
   }
 
@@ -101,6 +117,71 @@ export class VesselService {
     this.viewportMessage.set(null);
   }
 
+  readonly stats = signal<FleetStats | null>(null);
+
+  refreshStats(): void {
+    this.http.get<FleetStats>('/api/vessels/stats').subscribe({
+      next: (s) => this.stats.set(s),
+      error: () => undefined,
+    });
+  }
+
+  loadFollowed(): void {
+    if (!this.auth.isLoggedIn()) {
+      this.followed.set([]);
+      return;
+    }
+    this.http.get<Vessel[]>('/api/account/followed').subscribe({
+      next: (v) => this.followed.set(v),
+      error: () => this.followed.set([]),
+    });
+  }
+
+  follow(mmsi: number): void {
+    this.http.put<number[]>(`/api/account/followed/${mmsi}`, {}).subscribe({
+      next: () => {
+        this.loadFollowed();
+        this.auth.refreshAccount();
+      },
+    });
+  }
+
+  unfollow(mmsi: number): void {
+    this.http.delete<number[]>(`/api/account/followed/${mmsi}`).subscribe({
+      next: () => {
+        this.loadFollowed();
+        this.auth.refreshAccount();
+      },
+    });
+  }
+
+  dismissAlert(index: number): void {
+    this.alerts.update((list) => list.filter((_, i) => i !== index));
+  }
+
+  /** Downloads the current viewport as CSV (auth header attached by the interceptor). */
+  exportViewportCsv(bounds: Bounds): void {
+    const q = `latMin=${bounds.latMin}&lonMin=${bounds.lonMin}&latMax=${bounds.latMax}&lonMax=${bounds.lonMax}`;
+    this.http.get(`/api/vessels/export?${q}`, { responseType: 'blob' }).subscribe({
+      next: (blob) => this.triggerDownload(blob, 'vessels.csv'),
+    });
+  }
+
+  exportTrackGeoJson(mmsi: number): void {
+    this.http.get(`/api/vessels/${mmsi}/track?format=geojson`, { responseType: 'blob' }).subscribe({
+      next: (blob) => this.triggerDownload(blob, `track-${mmsi}.geojson`),
+    });
+  }
+
+  private triggerDownload(blob: Blob, filename: string): void {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   private async reconnect(): Promise<void> {
     if (this.connection) {
       await this.connection.stop().catch(() => undefined);
@@ -114,6 +195,9 @@ export class VesselService {
       .build();
 
     connection.on('VesselsUpdated', (batch: Vessel[]) => this.applyBatch(batch));
+    connection.on('AreaAlert', (alert: AreaAlert) =>
+      this.alerts.update((list) => [alert, ...list].slice(0, 20)),
+    );
     connection.onreconnecting(() => this.connectionState.set('reconnecting'));
     connection.onreconnected(async () => {
       this.connectionState.set('connected');

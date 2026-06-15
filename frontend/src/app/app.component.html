@@ -7,6 +7,9 @@
       </span>
     }
     <span class="badge tier">{{ auth.tier() }}</span>
+    @if (auth.account()?.isAdmin) {
+      <button class="badge admin-btn" (click)="showAdmin.set(true)">⚙ Admin</button>
+    }
     <span class="badge" [class.connected]="vesselService.connectionState() === 'connected'">
       {{ vesselService.connectionState() }}
     </span>
@@ -17,12 +20,18 @@
 <div class="layout">
   <aside>
     <app-account />
+    <app-tools-panel />
     <app-sidebar />
   </aside>
   <main>
     @if (vesselService.viewportMessage(); as message) {
       <div class="viewport-banner">{{ message }}</div>
     }
+    <app-alert-toasts />
     <app-map />
   </main>
 </div>
+
+@if (showAdmin()) {
+  <app-admin-panel (closed)="showAdmin.set(false)" />
+}

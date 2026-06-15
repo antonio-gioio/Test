@@ -19,6 +19,7 @@ export interface TierLimits {
 export interface Account {
   email: string;
   tier: string;
+  isAdmin: boolean;
   limits: TierLimits;
   followedMmsis: number[];
 }

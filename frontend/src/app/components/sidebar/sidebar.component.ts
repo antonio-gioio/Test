@@ -2,6 +2,7 @@ import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { navStatusLabel, Vessel } from '../../models/vessel';
+import { AuthService } from '../../services/auth.service';
 import { VesselService } from '../../services/vessel.service';
 
 @Component({
@@ -13,9 +14,14 @@ import { VesselService } from '../../services/vessel.service';
 })
 export class SidebarComponent {
   protected readonly vesselService = inject(VesselService);
+  protected readonly auth = inject(AuthService);
   protected readonly search = signal('');
   protected readonly globalResults = signal<Vessel[]>([]);
   protected readonly navStatusLabel = navStatusLabel;
+
+  protected isFollowed(mmsi: number): boolean {
+    return this.auth.account()?.followedMmsis.includes(mmsi) ?? false;
+  }
 
   private searchTimer: ReturnType<typeof setTimeout> | undefined;
 

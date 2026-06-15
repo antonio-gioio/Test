@@ -74,6 +74,32 @@ Ais__Provider=Datalastic  Ais__Datalastic__ApiKey=YOUR_TRIAL_KEY  dotnet run
 the simulator are verified; the paid providers are implemented to their documented REST shapes
 and need your trial key to exercise the live response.
 
+## Features
+
+- **Live map** — Leaflet with heading-rotated vessel markers, viewport-scoped streaming, and
+  server-side clustering at low zoom.
+- **Accounts & tiers** — registration/login (JWT), Free/Pro/Enterprise plans enforced
+  server-side. A seeded **admin** account unlocks the admin dashboard.
+- **Admin dashboard** — admins manage users (change tier, delete) and see system stats
+  (users by tier, watch areas, follows, DB/cache counts). Seeded on startup from config.
+- **Geofence watch areas** — save a map area; get a live SignalR alert (toast) when a vessel
+  enters it.
+- **Followed vessels** — follow ships and track their live positions in a side panel.
+- **Global search** — find any tracked vessel by name or MMSI, not just the viewport.
+- **Fleet statistics** — totals, moving/stopped, and a breakdown by ship type.
+- **Data export** — download a viewport as CSV or a vessel's track as GeoJSON.
+
+### Admin account
+
+An admin user is seeded on startup (configure under `Admin`):
+
+```jsonc
+"Admin": { "Email": "admin@aisstream.local", "Password": "Admin123!" }
+```
+
+Sign in with those credentials to get the **⚙ Admin** button. Change `Admin__Password`
+(env var) for any real deployment.
+
 ## Subscription tiers
 
 Enforced server-side over both REST and SignalR:

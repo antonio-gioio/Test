@@ -54,6 +54,18 @@
         <dt>Last update</dt>
         <dd>{{ vessel.lastUpdate | date: 'HH:mm:ss' }}</dd>
       </dl>
+      <div class="actions">
+        @if (auth.isLoggedIn()) {
+          @if (isFollowed(vessel.mmsi)) {
+            <button class="action" (click)="vesselService.unfollow(vessel.mmsi)">★ Following</button>
+          } @else {
+            <button class="action" (click)="vesselService.follow(vessel.mmsi)">☆ Follow</button>
+          }
+        }
+        <button class="action" (click)="vesselService.exportTrackGeoJson(vessel.mmsi)">
+          ⬇ Track (GeoJSON)
+        </button>
+      </div>
     </section>
   }
 

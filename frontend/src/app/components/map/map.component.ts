@@ -94,6 +94,7 @@ export class MapComponent implements AfterViewInit, OnDestroy {
       latMax: b.getNorth(),
       lonMax: b.getEast(),
     };
+    this.vesselService.currentBounds.set(bounds);
 
     if (this.map.getZoom() < MapComponent.ClusterZoom) {
       this.enterClusterMode(bounds);

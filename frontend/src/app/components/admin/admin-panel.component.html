@@ -1,0 +1,53 @@
+<div class="backdrop" (click)="close()">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <header>
+      <h2>Admin dashboard</h2>
+      <button class="close" (click)="close()">✕</button>
+    </header>
+
+    @if (admin.stats(); as s) {
+      <div class="stats">
+        <div class="card"><span>{{ s.totalUsers }}</span>Users</div>
+        <div class="card"><span>{{ s.watchAreas }}</span>Watch areas</div>
+        <div class="card"><span>{{ s.followedVessels }}</span>Follows</div>
+        <div class="card"><span>{{ s.vesselsInCache }}</span>Vessels (cache)</div>
+        <div class="card"><span>{{ s.trackPoints }}</span>Track points</div>
+      </div>
+    }
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Email</th>
+            <th>Tier</th>
+            <th>Follows</th>
+            <th>Areas</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (u of admin.users(); track u.id) {
+            <tr>
+              <td>{{ u.email }} @if (u.isAdmin) { <span class="badge">admin</span> }</td>
+              <td>
+                <select [value]="u.tier" (change)="onTierChange(u.id, $any($event.target).value)">
+                  @for (t of tiers; track t) {
+                    <option [value]="t">{{ t }}</option>
+                  }
+                </select>
+              </td>
+              <td>{{ u.followedCount }}</td>
+              <td>{{ u.watchAreas }}</td>
+              <td>
+                @if (!u.isAdmin) {
+                  <button class="del" (click)="admin.deleteUser(u.id)">Delete</button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

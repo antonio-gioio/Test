@@ -44,6 +44,34 @@ export interface ClusterResult {
   clusters: Cluster[];
 }
 
+export interface AreaAlert {
+  areaId: number;
+  areaName: string;
+  mmsi: number;
+  name: string | null;
+  shipType: string | null;
+  latitude: number;
+  longitude: number;
+  at: string;
+}
+
+export interface FleetStats {
+  total: number;
+  moving: number;
+  stopped: number;
+  byShipType: Record<string, number>;
+  withDestination: number;
+}
+
+export interface WatchArea {
+  id: number;
+  name: string;
+  latMin: number;
+  lonMin: number;
+  latMax: number;
+  lonMax: number;
+}
+
 const NAV_STATUS: Record<number, string> = {
   0: 'Under way using engine',
   1: 'At anchor',

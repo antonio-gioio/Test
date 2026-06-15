@@ -90,6 +90,28 @@
   }
 }
 
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+
+  .action {
+    flex: 1;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.78rem;
+    white-space: nowrap;
+
+    &:hover {
+      background: #f1f5f9;
+    }
+  }
+}
+
 .vessel-list {
   flex: 1;
   margin: 0;

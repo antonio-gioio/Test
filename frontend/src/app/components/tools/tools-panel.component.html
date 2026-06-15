@@ -1,0 +1,53 @@
+<section class="panel">
+  <h3>Fleet</h3>
+  @if (vesselService.stats(); as stats) {
+    <div class="stat-row">
+      <span><strong>{{ stats.total }}</strong> tracked</span>
+      <span><strong>{{ stats.moving }}</strong> moving</span>
+      <span><strong>{{ stats.stopped }}</strong> stopped</span>
+    </div>
+    <ul class="types">
+      @for (t of topTypes(); track t[0]) {
+        <li><span>{{ t[0] }}</span><span>{{ t[1] }}</span></li>
+      }
+    </ul>
+  } @else {
+    <p class="muted">Loading…</p>
+  }
+  <button class="btn" (click)="exportView()">⬇ Export view (CSV)</button>
+</section>
+
+@if (auth.isLoggedIn()) {
+  <section class="panel">
+    <h3>Followed vessels</h3>
+    @for (v of vesselService.followed(); track v.mmsi) {
+      <div class="item">
+        <button class="link" (click)="select(v.mmsi)">{{ v.name || 'MMSI ' + v.mmsi }}</button>
+        <button class="x" title="Unfollow" (click)="vesselService.unfollow(v.mmsi)">✕</button>
+      </div>
+    } @empty {
+      <p class="muted">Follow a vessel from its details to track it here.</p>
+    }
+  </section>
+
+  <section class="panel">
+    <h3>Watch areas</h3>
+    <div class="area-create">
+      <input
+        type="text"
+        placeholder="Area name"
+        [ngModel]="areaName()"
+        (ngModelChange)="areaName.set($event)"
+      />
+      <button class="btn" (click)="watchCurrentView()">＋ Watch current view</button>
+    </div>
+    @for (a of watchAreas.areas(); track a.id) {
+      <div class="item">
+        <span>{{ a.name }}</span>
+        <button class="x" title="Delete" (click)="watchAreas.remove(a.id)">✕</button>
+      </div>
+    } @empty {
+      <p class="muted">Get a live alert when a vessel enters a saved area.</p>
+    }
+  </section>
+}
