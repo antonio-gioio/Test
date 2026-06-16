@@ -273,6 +273,34 @@ public class ApiIntegrationTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task Export_returns_csv_with_a_header_row()
+    {
+        var client = _factory.CreateClient();
+        var res = await client.GetAsync("/api/vessels/export?latMin=49&lonMin=-3&latMax=51&lonMax=-1");
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        Assert.Equal("text/csv", res.Content.Headers.ContentType?.MediaType);
+        var csv = await res.Content.ReadAsStringAsync();
+        Assert.StartsWith("mmsi,name,latitude", csv);
+    }
+
+    [Fact]
+    public async Task Track_endpoint_returns_json_and_geojson()
+    {
+        var client = _factory.CreateClient();
+
+        var json = await client.GetAsync("/api/vessels/200000000/track?hours=1");
+        Assert.Equal(HttpStatusCode.OK, json.StatusCode);
+        var body = await json.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(body.TryGetProperty("points", out _));
+
+        var geo = await client.GetAsync("/api/vessels/200000000/track?hours=1&format=geojson");
+        Assert.Equal(HttpStatusCode.OK, geo.StatusCode);
+        Assert.Equal("application/geo+json", geo.Content.Headers.ContentType?.MediaType);
+        var feature = await geo.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Feature", feature.GetProperty("type").GetString());
+    }
+
+    [Fact]
     public async Task Vessel_stats_endpoint_returns_breakdown()
     {
         var client = _factory.CreateClient();
