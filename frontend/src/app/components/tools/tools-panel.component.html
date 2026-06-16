@@ -1,53 +1,69 @@
-<section class="panel">
-  <h3>Fleet</h3>
-  @if (vesselService.stats(); as stats) {
-    <div class="stat-row">
-      <span><strong>{{ stats.total }}</strong> tracked</span>
-      <span><strong>{{ stats.moving }}</strong> moving</span>
-      <span><strong>{{ stats.stopped }}</strong> stopped</span>
-    </div>
-    <ul class="types">
-      @for (t of topTypes(); track t[0]) {
-        <li><span>{{ t[0] }}</span><span>{{ t[1] }}</span></li>
+<mat-accordion multi>
+  <mat-expansion-panel expanded>
+    <mat-expansion-panel-header>
+      <mat-panel-title><mat-icon>insights</mat-icon> Fleet</mat-panel-title>
+    </mat-expansion-panel-header>
+    @if (vesselService.stats(); as stats) {
+      <div class="stat-row">
+        <span><strong>{{ stats.total }}</strong> tracked</span>
+        <span><strong>{{ stats.moving }}</strong> moving</span>
+        <span><strong>{{ stats.stopped }}</strong> stopped</span>
+      </div>
+      <ul class="types">
+        @for (t of topTypes(); track t[0]) {
+          <li><span>{{ t[0] }}</span><span>{{ t[1] }}</span></li>
+        }
+      </ul>
+    } @else {
+      <p class="muted">Loading…</p>
+    }
+    <button mat-stroked-button class="full" (click)="exportView()">
+      <mat-icon>download</mat-icon> Export view (CSV)
+    </button>
+  </mat-expansion-panel>
+
+  @if (auth.isLoggedIn()) {
+    <mat-expansion-panel>
+      <mat-expansion-panel-header>
+        <mat-panel-title><mat-icon>star</mat-icon> Followed</mat-panel-title>
+      </mat-expansion-panel-header>
+      @for (v of vesselService.followed(); track v.mmsi) {
+        <div class="item">
+          <button mat-button class="link" (click)="select(v.mmsi)">
+            {{ v.name || 'MMSI ' + v.mmsi }}
+          </button>
+          <button mat-icon-button (click)="vesselService.unfollow(v.mmsi)" aria-label="Unfollow">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+      } @empty {
+        <p class="muted">Follow a vessel from its details to track it here.</p>
       }
-    </ul>
-  } @else {
-    <p class="muted">Loading…</p>
+    </mat-expansion-panel>
+
+    <mat-expansion-panel>
+      <mat-expansion-panel-header>
+        <mat-panel-title><mat-icon>my_location</mat-icon> Watch areas</mat-panel-title>
+      </mat-expansion-panel-header>
+      <div class="area-create">
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>Area name</mat-label>
+          <input matInput [ngModel]="areaName()" (ngModelChange)="areaName.set($event)" />
+        </mat-form-field>
+        <button mat-stroked-button class="full" (click)="watchCurrentView()">
+          <mat-icon>add</mat-icon> Watch current view
+        </button>
+      </div>
+      @for (a of watchAreas.areas(); track a.id) {
+        <div class="item">
+          <span>{{ a.name }}</span>
+          <button mat-icon-button (click)="watchAreas.remove(a.id)" aria-label="Delete">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </div>
+      } @empty {
+        <p class="muted">Get a live alert when a vessel enters a saved area.</p>
+      }
+    </mat-expansion-panel>
   }
-  <button class="btn" (click)="exportView()">⬇ Export view (CSV)</button>
-</section>
-
-@if (auth.isLoggedIn()) {
-  <section class="panel">
-    <h3>Followed vessels</h3>
-    @for (v of vesselService.followed(); track v.mmsi) {
-      <div class="item">
-        <button class="link" (click)="select(v.mmsi)">{{ v.name || 'MMSI ' + v.mmsi }}</button>
-        <button class="x" title="Unfollow" (click)="vesselService.unfollow(v.mmsi)">✕</button>
-      </div>
-    } @empty {
-      <p class="muted">Follow a vessel from its details to track it here.</p>
-    }
-  </section>
-
-  <section class="panel">
-    <h3>Watch areas</h3>
-    <div class="area-create">
-      <input
-        type="text"
-        placeholder="Area name"
-        [ngModel]="areaName()"
-        (ngModelChange)="areaName.set($event)"
-      />
-      <button class="btn" (click)="watchCurrentView()">＋ Watch current view</button>
-    </div>
-    @for (a of watchAreas.areas(); track a.id) {
-      <div class="item">
-        <span>{{ a.name }}</span>
-        <button class="x" title="Delete" (click)="watchAreas.remove(a.id)">✕</button>
-      </div>
-    } @empty {
-      <p class="muted">Get a live alert when a vessel enters a saved area.</p>
-    }
-  </section>
-}
+</mat-accordion>

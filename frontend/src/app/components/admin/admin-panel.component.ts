@@ -1,10 +1,22 @@
 import { Component, OnInit, inject, output } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatSelectModule } from '@angular/material/select';
+import { MatTabsModule } from '@angular/material/tabs';
 import { AdminService } from '../../services/admin.service';
 import { Tier } from '../../services/auth.service';
+import { IntegrationsAdminComponent } from './integrations-admin.component';
 
 @Component({
   selector: 'app-admin-panel',
   standalone: true,
+  imports: [
+    MatTabsModule,
+    MatButtonModule,
+    MatIconModule,
+    MatSelectModule,
+    IntegrationsAdminComponent,
+  ],
   templateUrl: './admin-panel.component.html',
   styleUrl: './admin-panel.component.scss',
 })

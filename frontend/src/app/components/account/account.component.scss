@@ -2,67 +2,23 @@
   display: block;
   padding: 0.75rem;
   border-bottom: 1px solid #e2e8f0;
+  background: #fff;
 }
 
 .auth-form,
 .account {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.6rem;
 }
 
-.tabs {
-  display: flex;
-  gap: 0.25rem;
-
-  button {
-    flex: 1;
-    padding: 0.35rem;
-    border: 1px solid #cbd5e1;
-    background: #f8fafc;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.8rem;
-
-    &.active {
-      background: #0c4a6e;
-      color: #fff;
-      border-color: #0c4a6e;
-    }
-  }
+.auth-form mat-form-field,
+.account .tiers {
+  width: 100%;
 }
 
-input {
-  padding: 0.45rem 0.6rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  outline: none;
-
-  &:focus {
-    border-color: #0369a1;
-  }
-}
-
-.primary {
-  padding: 0.45rem;
-  border: none;
-  border-radius: 6px;
-  background: #0369a1;
-  color: #fff;
-  font-weight: 600;
-  cursor: pointer;
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: default;
-  }
-}
-
-.error {
-  margin: 0;
-  color: #b91c1c;
-  font-size: 0.78rem;
+.tiers {
+  font-size: 0.8rem;
 }
 
 .row {
@@ -71,58 +27,20 @@ input {
   justify-content: space-between;
 
   .email {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
     font-weight: 600;
     font-size: 0.85rem;
   }
 }
 
-.link {
-  border: none;
-  background: none;
-  color: #0369a1;
-  cursor: pointer;
-  font-size: 0.78rem;
-}
-
-.tier-switch {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-
-  .label {
-    font-size: 0.78rem;
-    color: #64748b;
-  }
-
-  .tier {
-    flex: 1;
-    padding: 0.3rem;
-    border: 1px solid #cbd5e1;
-    background: #fff;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.76rem;
-
-    &.active {
-      background: #15803d;
-      color: #fff;
-      border-color: #15803d;
-    }
-  }
-}
-
-.limits {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.1rem 0.6rem;
+.error {
   margin: 0;
-  font-size: 0.78rem;
+  color: #b91c1c;
+  font-size: 0.8rem;
+}
 
-  dt {
-    color: #64748b;
-  }
-
-  dd {
-    margin: 0;
-  }
+mat-chip-set {
+  font-size: 0.72rem;
 }

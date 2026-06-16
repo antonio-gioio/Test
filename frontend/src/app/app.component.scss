@@ -5,23 +5,26 @@
 }
 
 .topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.6rem 1rem;
-  background: #0c4a6e;
-  color: #fff;
   z-index: 1100;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 
-  h1 {
-    margin: 0;
+  .logo {
+    margin-right: 0.5rem;
+  }
+
+  .title {
     font-size: 1.1rem;
-    font-weight: 600;
+    font-weight: 500;
+  }
+
+  .spacer {
+    flex: 1 1 auto;
   }
 }
 
 .badges {
   display: flex;
+  align-items: center;
   gap: 0.5rem;
 }
 
@@ -90,11 +93,9 @@
   background: #7c3aed;
 }
 
-.badge.admin-btn {
-  border: none;
-  cursor: pointer;
-  background: #b45309;
+.admin-btn {
   color: #fff;
-  font: inherit;
-  font-size: 0.75rem;
+  border-color: rgba(255, 255, 255, 0.5);
+  line-height: 32px;
+  height: 34px;
 }

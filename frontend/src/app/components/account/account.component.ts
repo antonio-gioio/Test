@@ -1,11 +1,25 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { AuthService, Tier } from '../../services/auth.service';
 
 @Component({
   selector: 'app-account',
   standalone: true,
-  imports: [FormsModule],
+  imports: [
+    FormsModule,
+    MatButtonModule,
+    MatButtonToggleModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatIconModule,
+    MatChipsModule,
+  ],
   templateUrl: './account.component.html',
   styleUrl: './account.component.scss',
 })

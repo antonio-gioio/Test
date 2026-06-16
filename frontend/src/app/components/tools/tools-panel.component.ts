@@ -1,5 +1,10 @@
 import { Component, OnDestroy, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { AuthService } from '../../services/auth.service';
 import { VesselService } from '../../services/vessel.service';
 import { WatchAreaService } from '../../services/watch-area.service';
@@ -7,7 +12,14 @@ import { WatchAreaService } from '../../services/watch-area.service';
 @Component({
   selector: 'app-tools-panel',
   standalone: true,
-  imports: [FormsModule],
+  imports: [
+    FormsModule,
+    MatExpansionModule,
+    MatButtonModule,
+    MatIconModule,
+    MatFormFieldModule,
+    MatInputModule,
+  ],
   templateUrl: './tools-panel.component.html',
   styleUrl: './tools-panel.component.scss',
 })

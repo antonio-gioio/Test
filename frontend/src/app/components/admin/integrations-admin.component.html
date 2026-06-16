@@ -1,0 +1,107 @@
+<div class="head">
+  <p class="hint">Data sources run on the ingestor. Changes take effect within ~10 seconds.</p>
+  @if (!showForm()) {
+    <button mat-flat-button color="primary" (click)="add()">
+      <mat-icon>add</mat-icon> Add integration
+    </button>
+  }
+</div>
+
+@if (showForm()) {
+  <div class="form">
+    <h3>{{ editingId == null ? 'New integration' : 'Edit integration' }}</h3>
+    <div class="row">
+      <mat-form-field appearance="outline">
+        <mat-label>Name</mat-label>
+        <input matInput [(ngModel)]="form.name" placeholder="e.g. aisstream-channel" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Provider</mat-label>
+        <mat-select [(ngModel)]="form.provider">
+          @for (p of svc.providerTypes(); track p.value) {
+            <mat-option [value]="p.value">{{ p.value }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    @if (currentInfo(); as info) {
+      <p class="note">{{ info.note }}</p>
+    }
+
+    @if (providerNeeds('apiKey')) {
+      <mat-form-field appearance="outline" class="full">
+        <mat-label>API key</mat-label>
+        <input matInput [(ngModel)]="form.apiKey" />
+      </mat-form-field>
+    }
+    @if (providerNeeds('url')) {
+      <mat-form-field appearance="outline" class="full">
+        <mat-label>URL (optional — defaults to provider's)</mat-label>
+        <input matInput [(ngModel)]="form.url" />
+      </mat-form-field>
+    }
+    @if (usesBoxes) {
+      <mat-form-field appearance="outline" class="full">
+        <mat-label>Bounding boxes JSON [[[latMin,lonMin],[latMax,lonMax]]]</mat-label>
+        <textarea matInput rows="2" [(ngModel)]="form.boundingBoxesJson"></textarea>
+      </mat-form-field>
+    }
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>MMSI filter JSON (optional, e.g. [123456789])</mat-label>
+      <input matInput [(ngModel)]="form.mmsiFilterJson" />
+    </mat-form-field>
+    @if (usesPoll) {
+      <mat-form-field appearance="outline">
+        <mat-label>Poll seconds</mat-label>
+        <input matInput type="number" [(ngModel)]="form.pollSeconds" />
+      </mat-form-field>
+    }
+    @if (usesArea) {
+      <div class="row">
+        <mat-form-field appearance="outline">
+          <mat-label>Center lat</mat-label>
+          <input matInput type="number" [(ngModel)]="form.centerLat" />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Center lon</mat-label>
+          <input matInput type="number" [(ngModel)]="form.centerLon" />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Radius km</mat-label>
+          <input matInput type="number" [(ngModel)]="form.radiusKm" />
+        </mat-form-field>
+      </div>
+    }
+
+    <mat-slide-toggle [(ngModel)]="form.enabled">Enabled</mat-slide-toggle>
+
+    @if (error()) {
+      <p class="error">{{ error() }}</p>
+    }
+    <div class="actions">
+      <button mat-button (click)="cancel()">Cancel</button>
+      <button mat-flat-button color="primary" (click)="save()" [disabled]="!form.name">Save</button>
+    </div>
+  </div>
+}
+
+<div class="list">
+  @for (i of svc.integrations(); track i.id) {
+    <div class="item">
+      <div class="info">
+        <span class="name">{{ i.name }}</span>
+        <span class="provider">{{ i.provider }}</span>
+      </div>
+      <mat-slide-toggle [checked]="i.enabled" (change)="toggle(i)">
+        {{ i.enabled ? 'On' : 'Off' }}
+      </mat-slide-toggle>
+      <button mat-icon-button (click)="edit(i)" matTooltip="Edit"><mat-icon>edit</mat-icon></button>
+      <button mat-icon-button color="warn" (click)="remove(i)" matTooltip="Delete">
+        <mat-icon>delete</mat-icon>
+      </button>
+    </div>
+  } @empty {
+    <p class="note">No integrations yet. Add one to start ingesting AIS data.</p>
+  }
+</div>

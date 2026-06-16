@@ -1,4 +1,7 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatToolbarModule } from '@angular/material/toolbar';
 import { AccountComponent } from './components/account/account.component';
 import { AdminPanelComponent } from './components/admin/admin-panel.component';
 import { AlertToastsComponent } from './components/alerts/alert-toasts.component';
@@ -17,6 +20,9 @@ import { VesselService } from './services/vessel.service';
     ToolsPanelComponent,
     AlertToastsComponent,
     AdminPanelComponent,
+    MatToolbarModule,
+    MatButtonModule,
+    MatIconModule,
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',

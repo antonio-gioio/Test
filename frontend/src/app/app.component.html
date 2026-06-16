@@ -1,21 +1,25 @@
-<header class="topbar">
-  <h1>⚓ AIS Vessel Tracker</h1>
+<mat-toolbar color="primary" class="topbar">
+  <mat-icon class="logo">sailing</mat-icon>
+  <span class="title">AIS Vessel Tracker</span>
+  <span class="spacer"></span>
   <div class="badges">
     @if (vesselService.feedMode(); as mode) {
       <span class="badge" [class.live]="mode === 'live'" [class.sim]="mode === 'simulation'">
-        {{ mode === 'live' ? 'Live aisstream.io feed' : 'Simulation mode' }}
+        {{ mode === 'live' ? 'Live feed' : 'Simulation' }}
       </span>
     }
     <span class="badge tier">{{ auth.tier() }}</span>
     @if (auth.account()?.isAdmin) {
-      <button class="badge admin-btn" (click)="showAdmin.set(true)">⚙ Admin</button>
+      <button mat-stroked-button class="admin-btn" (click)="showAdmin.set(true)">
+        <mat-icon>settings</mat-icon> Admin
+      </button>
     }
     <span class="badge" [class.connected]="vesselService.connectionState() === 'connected'">
       {{ vesselService.connectionState() }}
     </span>
     <span class="badge count">{{ vesselService.vesselCount() }} in view</span>
   </div>
-</header>
+</mat-toolbar>
 
 <div class="layout">
   <aside>

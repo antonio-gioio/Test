@@ -1,14 +1,12 @@
-.panel {
-  padding: 0.75rem;
-  border-bottom: 1px solid #e2e8f0;
+:host {
+  display: block;
+}
 
-  h3 {
-    margin: 0 0 0.5rem;
-    font-size: 0.78rem;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    color: #64748b;
-  }
+mat-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
 }
 
 .stat-row {
@@ -42,61 +40,25 @@
   color: #94a3b8;
 }
 
-.btn {
+.full {
   width: 100%;
-  margin-top: 0.4rem;
-  padding: 0.4rem;
-  border: 1px solid #0369a1;
-  background: #fff;
-  color: #0369a1;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.8rem;
-
-  &:hover {
-    background: #f0f9ff;
-  }
 }
 
 .item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.3rem 0;
   font-size: 0.84rem;
-}
 
-.link {
-  border: none;
-  background: none;
-  color: #0369a1;
-  cursor: pointer;
-  font-size: 0.84rem;
-  padding: 0;
-  text-align: left;
-}
-
-.x {
-  border: none;
-  background: none;
-  color: #94a3b8;
-  cursor: pointer;
-
-  &:hover {
-    color: #dc2626;
+  .link {
+    flex: 1;
+    text-align: left;
+    justify-content: flex-start;
   }
 }
 
 .area-create {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
   margin-bottom: 0.5rem;
-
-  input {
-    padding: 0.4rem 0.5rem;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    font-size: 0.82rem;
-  }
 }

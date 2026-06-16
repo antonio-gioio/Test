@@ -1,4 +1,19 @@
+@use '@angular/material' as mat;
 @use 'leaflet/dist/leaflet.css';
+
+html {
+  color-scheme: light;
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$azure-palette,
+        tertiary: mat.$cyan-palette,
+      ),
+      typography: Roboto,
+      density: 0,
+    )
+  );
+}
 
 * {
   box-sizing: border-box;
@@ -8,8 +23,9 @@ html,
 body {
   margin: 0;
   height: 100%;
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: Roboto, 'Segoe UI', system-ui, -apple-system, sans-serif;
   color: #0f172a;
+  background: #eef2f6;
 }
 
 /* Vessel markers rendered by Leaflet divIcons (outside Angular component styles). */
