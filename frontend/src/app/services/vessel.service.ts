@@ -195,6 +195,7 @@ export class VesselService {
       .build();
 
     connection.on('VesselsUpdated', (batch: Vessel[]) => this.applyBatch(batch));
+    connection.on('FollowedUpdated', (vessel: Vessel) => this.applyFollowedUpdate(vessel));
     connection.on('AreaAlert', (alert: AreaAlert) =>
       this.alerts.update((list) => [alert, ...list].slice(0, 20)),
     );
@@ -245,6 +246,23 @@ export class VesselService {
       }
     } catch (err) {
       console.error('SubscribeViewport failed', err);
+    }
+  }
+
+  /** Live update for a followed vessel (arrives even when it's outside the viewport). */
+  private applyFollowedUpdate(vessel: Vessel): void {
+    this.followed.update((list) => {
+      const idx = list.findIndex((v) => v.mmsi === vessel.mmsi);
+      if (idx < 0) {
+        return list;
+      }
+      const next = [...list];
+      next[idx] = vessel;
+      return next;
+    });
+    // If the vessel is also on the map, refresh its marker.
+    if (this.vesselMap().has(vessel.mmsi)) {
+      this.applyBatch([vessel]);
     }
   }
 

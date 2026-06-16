@@ -165,6 +165,7 @@ if (cluster.RunsRealtime)
 {
     builder.Services.AddHostedService(sp => sp.GetRequiredService<VesselBroadcaster>());
     builder.Services.AddHostedService<WatchAreaAlertService>();
+    builder.Services.AddHostedService<FollowedBroadcastService>();
 }
 
 // Only the ingestor runs the configured integrations and writes to the database.
