@@ -7,6 +7,7 @@ using AisStream.Api.Services;
 using AisStream.Api.Subscriptions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Options;
@@ -45,6 +46,7 @@ public class VesselsController : ControllerBase
     /// not just the current viewport. Returns up to 25 recent matches.
     /// </summary>
     [HttpGet("search")]
+    [EnableRateLimiting("tierApi")]
     public async Task<ActionResult<IReadOnlyList<Vessel>>> Search([FromQuery] string q)
     {
         var term = (q ?? string.Empty).Trim();
@@ -92,6 +94,7 @@ public class VesselsController : ControllerBase
 
     /// <summary>Exports the vessels in a viewport as CSV (tier-gated, same as the JSON endpoint).</summary>
     [HttpGet("export")]
+    [EnableRateLimiting("tierApi")]
     public async Task<IActionResult> Export(
         [FromQuery] double latMin,
         [FromQuery] double lonMin,
@@ -259,6 +262,7 @@ public class VesselsController : ControllerBase
     /// Useful for "what's around here". Capped at 50 results.
     /// </summary>
     [HttpGet("nearest")]
+    [EnableRateLimiting("tierApi")]
     public async Task<ActionResult<object>> GetNearest(
         [FromQuery] double lat,
         [FromQuery] double lon,

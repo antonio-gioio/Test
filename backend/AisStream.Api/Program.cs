@@ -8,6 +8,7 @@ using AisStream.Api.Ingestion;
 using AisStream.Api.Ingestion.Providers;
 using AisStream.Api.Messaging;
 using AisStream.Api.Services;
+using AisStream.Api.Subscriptions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
@@ -134,6 +135,29 @@ builder.Services.AddRateLimiter(options =>
             .GetValue("RateLimit:AuthPermitLimit", 10);
         return RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = limit,
+                Window = TimeSpan.FromMinutes(1),
+            });
+    });
+
+    // Per-tier throttle on heavy, explicitly-triggered endpoints (export/search/nearest).
+    // Keyed per user (or IP for guests); Enterprise is effectively unlimited.
+    options.AddPolicy("tierApi", context =>
+    {
+        var cfg = context.RequestServices.GetRequiredService<IConfiguration>();
+        var tier = TokenService.TierOf(context.User);
+        var limit = tier switch
+        {
+            SubscriptionTier.Enterprise => cfg.GetValue("RateLimit:TierApiEnterprise", 100_000),
+            SubscriptionTier.Pro => cfg.GetValue("RateLimit:TierApiPro", 300),
+            _ => cfg.GetValue("RateLimit:TierApiFree", 60),
+        };
+        var key = context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+            ?? context.Connection.RemoteIpAddress?.ToString() ?? "anon";
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: $"{tier}:{key}",
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = limit,

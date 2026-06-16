@@ -226,7 +226,8 @@ the ingestor's feed, proving the cross-node Redis fan-out.
 
 - **Health checks**: `/health` (full), `/health/live` (process), `/health/ready` (database) for
   Kubernetes-style liveness/readiness probes.
-- **Rate limiting** on the auth endpoints (fixed window per IP) to blunt brute-force.
+- **Rate limiting**: auth endpoints (per IP) plus a **per-tier** quota on heavy endpoints
+  (export/search/nearest) — Free 60/min, Pro 300/min, Enterprise effectively unlimited.
 - **RFC 7807 ProblemDetails** for unhandled errors — no stack traces leak to clients.
 - **Secrets guard**: the API refuses to start in Production with the default JWT key; set
   `Jwt__Key` (and a real `ConnectionStrings__Postgres`) via environment/secret store.
