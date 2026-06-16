@@ -387,6 +387,56 @@ public class ApiIntegrationTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task Reset_password_rejects_an_invalid_token()
+    {
+        var client = _factory.CreateClient();
+        var email = NewEmail();
+        await client.PostAsJsonAsync("/api/auth/register", new { email, password = "Password123" });
+        var res = await client.PostAsJsonAsync("/api/auth/reset-password",
+            new { email, token = "bogus-token", newPassword = "NewPassword456" });
+        Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
+    }
+
+    [Fact]
+    public async Task Confirm_email_rejects_an_invalid_token()
+    {
+        var client = _factory.CreateClient();
+        var email = NewEmail();
+        await client.PostAsJsonAsync("/api/auth/register", new { email, password = "Password123" });
+        var res = await client.PostAsJsonAsync("/api/auth/confirm-email", new { email, token = "bogus-token" });
+        Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
+    }
+
+    [Fact]
+    public async Task Creating_a_duplicate_integration_name_conflicts()
+    {
+        var client = _factory.CreateClient();
+        var token = await AdminTokenAsync(client);
+        var body = new
+        {
+            name = $"dup-{Guid.NewGuid():N}",
+            provider = "Simulator",
+            enabled = false,
+            apiKey = (string?)null,
+            url = (string?)null,
+            boundingBoxesJson = (string?)null,
+            mmsiFilterJson = (string?)null,
+            pollSeconds = 60,
+            centerLat = 50.0,
+            centerLon = -1.0,
+            radiusKm = 100.0,
+        };
+
+        var first = await client.SendAsync(Authed(HttpMethod.Post, "/api/admin/integrations", token, JsonContent.Create(body)));
+        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        var second = await client.SendAsync(Authed(HttpMethod.Post, "/api/admin/integrations", token, JsonContent.Create(body)));
+        Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
+
+        var id = (await first.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+        await client.SendAsync(Authed(HttpMethod.Delete, $"/api/admin/integrations/{id}", token));
+    }
+
+    [Fact]
     public async Task Forgot_password_always_returns_ok()
     {
         var client = _factory.CreateClient();
