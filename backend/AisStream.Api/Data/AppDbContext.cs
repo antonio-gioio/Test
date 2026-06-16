@@ -15,6 +15,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<WatchArea> WatchAreas => Set<WatchArea>();
     public DbSet<Integration> Integrations => Set<Integration>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -74,6 +75,12 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
                 .WithMany()
                 .HasForeignKey(t => t.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<AuditLog>(entity =>
+        {
+            entity.HasKey(a => a.Id);
+            entity.HasIndex(a => a.Timestamp);
         });
     }
 }

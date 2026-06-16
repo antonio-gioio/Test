@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using AisStream.Api.Auth;
 using AisStream.Api.Data;
 using AisStream.Api.Ingestion;
+using AisStream.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -15,8 +16,13 @@ namespace AisStream.Api.Controllers;
 public class IntegrationsController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly AuditService _audit;
 
-    public IntegrationsController(AppDbContext db) => _db = db;
+    public IntegrationsController(AppDbContext db, AuditService audit)
+    {
+        _db = db;
+        _audit = audit;
+    }
 
     public record IntegrationDto(
         int Id, string Name, AisProviderType Provider, bool Enabled,
@@ -58,6 +64,7 @@ public class IntegrationsController : ControllerBase
         Apply(entity, body);
         _db.Integrations.Add(entity);
         await _db.SaveChangesAsync();
+        await _audit.RecordAsync(User, "IntegrationCreate", $"{entity.Name} ({entity.Provider})");
         return Ok(ToDto(entity));
     }
 
@@ -74,6 +81,7 @@ public class IntegrationsController : ControllerBase
         entity.UpdatedAt = DateTimeOffset.UtcNow;
         entity.Revision++; // signal the ingestion manager to restart this runner
         await _db.SaveChangesAsync();
+        await _audit.RecordAsync(User, "IntegrationUpdate", $"{entity.Name} ({entity.Provider})");
         return Ok(ToDto(entity));
     }
 
@@ -89,6 +97,7 @@ public class IntegrationsController : ControllerBase
         entity.Enabled = value;
         entity.UpdatedAt = DateTimeOffset.UtcNow;
         await _db.SaveChangesAsync();
+        await _audit.RecordAsync(User, "IntegrationEnabled", $"{entity.Name} = {value}");
         return NoContent();
     }
 
@@ -96,7 +105,13 @@ public class IntegrationsController : ControllerBase
     public async Task<IActionResult> Delete(int id)
     {
         var removed = await _db.Integrations.Where(i => i.Id == id).ExecuteDeleteAsync();
-        return removed > 0 ? NoContent() : NotFound();
+        if (removed > 0)
+        {
+            await _audit.RecordAsync(User, "IntegrationDelete", $"id={id}");
+            return NoContent();
+        }
+
+        return NotFound();
     }
 
     private static void Apply(Integration e, SaveIntegration b)

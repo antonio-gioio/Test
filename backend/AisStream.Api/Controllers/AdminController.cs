@@ -18,12 +18,18 @@ public class AdminController : ControllerBase
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly AppDbContext _db;
     private readonly VesselStore _store;
+    private readonly AuditService _audit;
 
-    public AdminController(UserManager<ApplicationUser> userManager, AppDbContext db, VesselStore store)
+    public AdminController(
+        UserManager<ApplicationUser> userManager,
+        AppDbContext db,
+        VesselStore store,
+        AuditService audit)
     {
         _userManager = userManager;
         _db = db;
         _store = store;
+        _audit = audit;
     }
 
     public record UserRow(string Id, string Email, string Tier, bool IsAdmin, int FollowedCount, int WatchAreas);
@@ -70,6 +76,7 @@ public class AdminController : ControllerBase
 
         user.Tier = request.Tier;
         await _userManager.UpdateAsync(user);
+        await _audit.RecordAsync(User, "SetTier", $"{user.Email} -> {request.Tier}");
         return NoContent();
     }
 
@@ -88,7 +95,19 @@ public class AdminController : ControllerBase
         }
 
         await _userManager.DeleteAsync(user);
+        await _audit.RecordAsync(User, "DeleteUser", user.Email);
         return NoContent();
+    }
+
+    [HttpGet("audit")]
+    public async Task<ActionResult<object>> Audit([FromQuery] int take = 100)
+    {
+        var entries = await _db.AuditLogs
+            .OrderByDescending(a => a.Timestamp)
+            .Take(Math.Clamp(take, 1, 500))
+            .Select(a => new { a.Timestamp, a.Actor, a.Action, a.Detail })
+            .ToListAsync();
+        return Ok(entries);
     }
 
     [HttpGet("stats")]

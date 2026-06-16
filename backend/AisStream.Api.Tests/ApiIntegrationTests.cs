@@ -87,6 +87,43 @@ public class ApiIntegrationTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task Admin_actions_are_audit_logged()
+    {
+        var client = _factory.CreateClient();
+        var adminToken = await AdminTokenAsync(client);
+
+        // Create a normal user, then change its tier as admin -> should be audited.
+        var (_, userToken) = await RegisteredClientAsync();
+        var userId = await UserIdFromMeAsync(client, userToken);
+
+        var setTier = await client.SendAsync(Authed(HttpMethod.Post, $"/api/admin/users/{userId}/tier",
+            adminToken, JsonContent.Create(new { tier = 1 })));
+        Assert.Equal(HttpStatusCode.NoContent, setTier.StatusCode);
+
+        var audit = await client.SendAsync(Get("/api/admin/audit", adminToken));
+        var entries = await audit.Content.ReadFromJsonAsync<JsonElement>();
+        var actions = entries.EnumerateArray().Select(e => e.GetProperty("action").GetString()).ToList();
+        Assert.Contains("SetTier", actions);
+    }
+
+    private async Task<string> UserIdFromMeAsync(HttpClient client, string token)
+    {
+        // Admin user list includes the new user; find its id by email is overkill — use the
+        // admin users endpoint to grab any non-admin id created in this test run.
+        var res = await client.SendAsync(Get("/api/admin/users", await AdminTokenAsync(client)));
+        var users = await res.Content.ReadFromJsonAsync<JsonElement>();
+        foreach (var u in users.EnumerateArray())
+        {
+            if (!u.GetProperty("isAdmin").GetBoolean())
+            {
+                return u.GetProperty("id").GetString()!;
+            }
+        }
+
+        throw new InvalidOperationException("No non-admin user found");
+    }
+
+    [Fact]
     public async Task Billing_webhook_is_inert_until_configured()
     {
         var client = _factory.CreateClient();

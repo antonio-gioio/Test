@@ -99,6 +99,7 @@ builder.Services
 
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<TokenService>();
+builder.Services.AddScoped<AuditService>();
 
 builder.Services
     .AddControllers()

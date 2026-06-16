@@ -21,16 +21,25 @@ export interface AdminStats {
   vesselsInCache: number;
 }
 
+export interface AuditEntry {
+  timestamp: string;
+  actor: string;
+  action: string;
+  detail: string | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AdminService {
   private readonly http = inject(HttpClient);
 
   readonly users = signal<AdminUser[]>([]);
   readonly stats = signal<AdminStats | null>(null);
+  readonly audit = signal<AuditEntry[]>([]);
 
   refresh(): void {
     this.http.get<AdminUser[]>('/api/admin/users').subscribe((u) => this.users.set(u));
     this.http.get<AdminStats>('/api/admin/stats').subscribe((s) => this.stats.set(s));
+    this.http.get<AuditEntry[]>('/api/admin/audit').subscribe((a) => this.audit.set(a));
   }
 
   setTier(id: string, tier: Tier): void {

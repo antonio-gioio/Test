@@ -1,3 +1,4 @@
+import { DatePipe } from '@angular/common';
 import { Component, OnInit, inject, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -15,6 +16,7 @@ import { IntegrationsAdminComponent } from './integrations-admin.component';
     MatButtonModule,
     MatIconModule,
     MatSelectModule,
+    DatePipe,
     IntegrationsAdminComponent,
   ],
   templateUrl: './admin-panel.component.html',
