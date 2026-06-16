@@ -169,10 +169,13 @@ builder.Services.AddRateLimiter(options =>
 // Vessel bus: Redis pub/sub when configured (multi-node), otherwise in-process (single node).
 if (redis.Enabled)
 {
-    builder.Services.AddSingleton<IConnectionMultiplexer>(
-        ConnectionMultiplexer.Connect(redis.ConnectionString));
+    // AbortOnConnectFail=false: start even if Redis is briefly down and reconnect, so a Redis
+    // blip doesn't crash the node at startup.
+    var redisConfig = ConfigurationOptions.Parse(redis.ConnectionString);
+    redisConfig.AbortOnConnectFail = false;
+    builder.Services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(redisConfig));
     builder.Services.AddSingleton<IVesselBus, RedisVesselBus>();
-    builder.Services.AddStackExchangeRedisCache(o => o.Configuration = redis.ConnectionString);
+    builder.Services.AddStackExchangeRedisCache(o => o.ConfigurationOptions = redisConfig);
 }
 else
 {
