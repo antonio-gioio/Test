@@ -33,6 +33,7 @@ export class AppComponent implements OnInit {
   protected readonly vesselService = inject(VesselService);
   protected readonly auth = inject(AuthService);
   protected readonly showAdmin = signal(false);
+  protected readonly sidebarOpen = signal(false);
 
   ngOnInit(): void {
     this.vesselService.start();

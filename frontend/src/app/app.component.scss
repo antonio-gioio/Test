@@ -52,10 +52,16 @@
   }
 }
 
+.menu-btn {
+  display: none;
+  color: #fff;
+}
+
 .layout {
   display: flex;
   flex: 1;
   min-height: 0;
+  position: relative;
 
   aside {
     width: 320px;
@@ -98,4 +104,41 @@
   border-color: rgba(255, 255, 255, 0.5);
   line-height: 32px;
   height: 34px;
+}
+
+/* ---- Mobile: sidebar becomes a slide-over drawer ---- */
+@media (max-width: 768px) {
+  .menu-btn {
+    display: inline-flex;
+  }
+
+  .layout aside {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1000;
+    width: min(86vw, 320px);
+    min-width: 0;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+
+    &.open {
+      transform: none;
+    }
+  }
+
+  .scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 999;
+    background: rgba(6, 36, 59, 0.45);
+    backdrop-filter: blur(1px);
+  }
+
+  .badges .badge.count,
+  .badges .badge.sim,
+  .badges .badge.live {
+    display: none; /* keep the toolbar uncluttered on small screens */
+  }
 }

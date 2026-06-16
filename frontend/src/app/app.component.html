@@ -1,4 +1,7 @@
 <mat-toolbar color="primary" class="topbar">
+  <button mat-icon-button class="menu-btn" (click)="sidebarOpen.set(!sidebarOpen())" aria-label="Toggle panel">
+    <mat-icon>{{ sidebarOpen() ? 'close' : 'menu' }}</mat-icon>
+  </button>
   <mat-icon class="logo">sailing</mat-icon>
   <span class="title">AIS Vessel Tracker</span>
   <span class="spacer"></span>
@@ -22,11 +25,14 @@
 </mat-toolbar>
 
 <div class="layout">
-  <aside>
+  <aside [class.open]="sidebarOpen()">
     <app-account />
     <app-tools-panel />
     <app-sidebar />
   </aside>
+  @if (sidebarOpen()) {
+    <div class="scrim" (click)="sidebarOpen.set(false)"></div>
+  }
   <main>
     @if (vesselService.viewportMessage(); as message) {
       <div class="viewport-banner">{{ message }}</div>
