@@ -19,18 +19,12 @@ using StackExchange.Redis;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.Configure<IngestionOptions>(builder.Configuration.GetSection(IngestionOptions.SectionName));
-builder.Services.Configure<AisStreamOptions>(builder.Configuration.GetSection(AisStreamOptions.SectionName));
-builder.Services.Configure<DigitrafficOptions>(builder.Configuration.GetSection(DigitrafficOptions.SectionName));
-builder.Services.Configure<MarineTrafficOptions>(builder.Configuration.GetSection(MarineTrafficOptions.SectionName));
-builder.Services.Configure<DatalasticOptions>(builder.Configuration.GetSection(DatalasticOptions.SectionName));
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
 builder.Services.Configure<ClusterOptions>(builder.Configuration.GetSection(ClusterOptions.SectionName));
 
-// Resolve which AIS data source is active (Auto picks AisStream if its key is set).
-var ingestion = builder.Configuration.GetSection(IngestionOptions.SectionName).Get<IngestionOptions>() ?? new IngestionOptions();
-var aisStreamKey = builder.Configuration[$"{AisStreamOptions.SectionName}:ApiKey"];
-var activeProvider = ingestion.Resolve(!string.IsNullOrWhiteSpace(aisStreamKey));
-builder.Services.AddSingleton(new ActiveProvider(activeProvider));
+// AIS data sources are configured per-integration in the database (admin-managed), built by
+// the provider factory and run by the ingestion manager.
+builder.Services.AddSingleton<IAisProviderFactory, AisProviderFactory>();
 builder.Services.AddHttpClient();
 
 var cluster = builder.Configuration.GetSection(ClusterOptions.SectionName).Get<ClusterOptions>() ?? new ClusterOptions();
@@ -163,36 +157,12 @@ if (cluster.RunsRealtime)
     builder.Services.AddHostedService<WatchAreaAlertService>();
 }
 
-// Only the ingestor connects to the AIS source and writes to the database.
+// Only the ingestor runs the configured integrations and writes to the database.
 if (cluster.RunsIngestion)
 {
     builder.Services.AddHostedService<VesselPersistenceService>();
     builder.Services.AddHostedService<VesselPruner>();
-
-    if (activeProvider == AisProviderType.Simulator)
-    {
-        builder.Services.AddHostedService<VesselSimulator>();
-    }
-    else
-    {
-        switch (activeProvider)
-        {
-            case AisProviderType.AisStream:
-                builder.Services.AddSingleton<IAisProvider, AisStreamProvider>();
-                break;
-            case AisProviderType.Digitraffic:
-                builder.Services.AddSingleton<IAisProvider, DigitrafficProvider>();
-                break;
-            case AisProviderType.MarineTraffic:
-                builder.Services.AddSingleton<IAisProvider, MarineTrafficProvider>();
-                break;
-            case AisProviderType.Datalastic:
-                builder.Services.AddSingleton<IAisProvider, DatalasticProvider>();
-                break;
-        }
-
-        builder.Services.AddHostedService<AisIngestionWorker>();
-    }
+    builder.Services.AddHostedService<IngestionManager>();
 }
 
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()

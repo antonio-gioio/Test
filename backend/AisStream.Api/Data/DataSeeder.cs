@@ -1,6 +1,8 @@
 using AisStream.Api.Auth;
+using AisStream.Api.Ingestion;
 using AisStream.Api.Subscriptions;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 namespace AisStream.Api.Data;
@@ -49,5 +51,38 @@ public static class DataSeeder
         {
             await userManager.AddToRoleAsync(user, Roles.Admin);
         }
+
+        await SeedDefaultIntegrationAsync(services, logger);
+    }
+
+    /// <summary>
+    /// Seeds a starter integration if none exist, so the app ingests data out of the box. Uses
+    /// AisStream if a key is configured (legacy config), otherwise the built-in Simulator.
+    /// </summary>
+    private static async Task SeedDefaultIntegrationAsync(IServiceProvider services, ILogger logger)
+    {
+        var db = services.GetRequiredService<AppDbContext>();
+        if (await db.Integrations.AnyAsync())
+        {
+            return;
+        }
+
+        var config = services.GetRequiredService<IConfiguration>();
+        var aisStreamKey = config["Ais:AisStream:ApiKey"];
+
+        var integration = string.IsNullOrWhiteSpace(aisStreamKey)
+            ? new Integration { Name = "demo-simulator", Provider = AisProviderType.Simulator, Enabled = true }
+            : new Integration
+            {
+                Name = "aisstream-default",
+                Provider = AisProviderType.AisStream,
+                Enabled = true,
+                ApiKey = aisStreamKey,
+            };
+
+        db.Integrations.Add(integration);
+        await db.SaveChangesAsync();
+        logger.LogInformation("Seeded default integration '{Name}' ({Provider})",
+            integration.Name, integration.Provider);
     }
 }

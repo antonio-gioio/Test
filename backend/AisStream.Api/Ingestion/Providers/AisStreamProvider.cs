@@ -3,7 +3,6 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using AisStream.Api.Services;
-using Microsoft.Extensions.Options;
 
 namespace AisStream.Api.Ingestion.Providers;
 
@@ -13,33 +12,31 @@ namespace AisStream.Api.Ingestion.Providers;
 /// </summary>
 public class AisStreamProvider : IAisProvider
 {
-    private readonly AisStreamOptions _options;
-    private readonly IngestionOptions _ingestion;
-    private readonly ILogger<AisStreamProvider> _logger;
+    private static readonly string[] MessageTypes = ["PositionReport", "ShipStaticData"];
 
-    public AisStreamProvider(
-        IOptions<AisStreamOptions> options,
-        IOptions<IngestionOptions> ingestion,
-        ILogger<AisStreamProvider> logger)
+    private readonly ProviderSettings _settings;
+    private readonly ILogger _logger;
+
+    public AisStreamProvider(ProviderSettings settings, ILogger logger)
     {
-        _options = options.Value;
-        _ingestion = ingestion.Value;
+        _settings = settings;
         _logger = logger;
     }
 
-    public string Name => "aisstream.io";
+    public string Name => $"aisstream.io ({_settings.Name})";
 
     public async IAsyncEnumerable<VesselUpdate> StreamAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        var url = _settings.Url ?? "wss://stream.aisstream.io/v0/stream";
         using var socket = new ClientWebSocket();
-        await socket.ConnectAsync(new Uri(_options.Url), cancellationToken);
+        await socket.ConnectAsync(new Uri(url), cancellationToken);
 
         var subscription = JsonSerializer.Serialize(new
         {
-            APIKey = _options.ApiKey,
-            BoundingBoxes = _ingestion.BoundingBoxes,
-            FilterMessageTypes = _options.MessageTypes,
+            APIKey = _settings.ApiKey,
+            BoundingBoxes = _settings.BoundingBoxes,
+            FilterMessageTypes = MessageTypes,
         });
         await socket.SendAsync(
             Encoding.UTF8.GetBytes(subscription),

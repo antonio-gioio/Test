@@ -2,7 +2,6 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading.Channels;
 using AisStream.Api.Services;
-using Microsoft.Extensions.Options;
 using MQTTnet;
 using MQTTnet.Client;
 
@@ -15,16 +14,16 @@ namespace AisStream.Api.Ingestion.Providers;
 /// </summary>
 public class DigitrafficProvider : IAisProvider
 {
-    private readonly DigitrafficOptions _options;
-    private readonly ILogger<DigitrafficProvider> _logger;
+    private readonly ProviderSettings _settings;
+    private readonly ILogger _logger;
 
-    public DigitrafficProvider(IOptions<DigitrafficOptions> options, ILogger<DigitrafficProvider> logger)
+    public DigitrafficProvider(ProviderSettings settings, ILogger logger)
     {
-        _options = options.Value;
+        _settings = settings;
         _logger = logger;
     }
 
-    public string Name => "Digitraffic (Finland)";
+    public string Name => $"Digitraffic ({_settings.Name})";
 
     public async IAsyncEnumerable<VesselUpdate> StreamAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
@@ -54,7 +53,7 @@ public class DigitrafficProvider : IAisProvider
         };
 
         var clientOptions = new MqttClientOptionsBuilder()
-            .WithWebSocketServer(o => o.WithUri(_options.Url))
+            .WithWebSocketServer(o => o.WithUri(_settings.Url ?? "wss://meri.digitraffic.fi:443/mqtt"))
             .WithCleanSession()
             .Build();
 

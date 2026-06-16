@@ -1,6 +1,5 @@
 using System.Runtime.CompilerServices;
 using System.Text.Json;
-using Microsoft.Extensions.Options;
 
 namespace AisStream.Api.Ingestion.Providers;
 
@@ -10,31 +9,29 @@ namespace AisStream.Api.Ingestion.Providers;
 /// </summary>
 public class DatalasticProvider : IAisProvider
 {
-    private readonly DatalasticOptions _options;
+    private readonly ProviderSettings _settings;
     private readonly IHttpClientFactory _httpFactory;
-    private readonly ILogger<DatalasticProvider> _logger;
+    private readonly ILogger _logger;
 
-    public DatalasticProvider(
-        IOptions<DatalasticOptions> options,
-        IHttpClientFactory httpFactory,
-        ILogger<DatalasticProvider> logger)
+    public DatalasticProvider(ProviderSettings settings, IHttpClientFactory httpFactory, ILogger logger)
     {
-        _options = options.Value;
+        _settings = settings;
         _httpFactory = httpFactory;
         _logger = logger;
     }
 
-    public string Name => "Datalastic";
+    public string Name => $"Datalastic ({_settings.Name})";
 
     public async IAsyncEnumerable<VesselUpdate> StreamAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         using var http = _httpFactory.CreateClient();
+        var baseUrl = _settings.Url ?? "https://api.datalastic.com/api/v0";
 
         while (!cancellationToken.IsCancellationRequested)
         {
-            var url = $"{_options.BaseUrl}/vessel_inarea?api-key={_options.ApiKey}" +
-                      $"&lat={_options.Latitude}&lon={_options.Longitude}&radius={_options.RadiusKm}";
+            var url = $"{baseUrl}/vessel_inarea?api-key={_settings.ApiKey}" +
+                      $"&lat={_settings.CenterLat}&lon={_settings.CenterLon}&radius={_settings.RadiusKm}";
 
             var batch = await FetchAsync(http, url, cancellationToken);
             foreach (var update in batch)
@@ -42,7 +39,7 @@ public class DatalasticProvider : IAisProvider
                 yield return update;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(Math.Max(10, _options.PollSeconds)), cancellationToken);
+            await Task.Delay(TimeSpan.FromSeconds(Math.Max(10, _settings.PollSeconds)), cancellationToken);
         }
     }
 

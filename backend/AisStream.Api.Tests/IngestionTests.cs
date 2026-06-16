@@ -78,8 +78,11 @@ public class IngestionPipelineTests
         }
     }
 
+    private static ProviderSettings Settings(params long[] mmsiFilter) =>
+        new("test", null, null, [[[-90, -180], [90, 180]]], mmsiFilter, 60, 0, 0, 100);
+
     [Fact]
-    public async Task Worker_merges_provider_updates_into_store_and_bus()
+    public async Task Runner_merges_provider_updates_into_store_and_bus()
     {
         var store = new VesselStore();
         var bus = new InProcessVesselBus();
@@ -90,18 +93,35 @@ public class IngestionPipelineTests
             new VesselUpdate { Mmsi = 100, Latitude = 50, Longitude = -1 },
             new VesselUpdate { Mmsi = 200, Latitude = 51, Longitude = 0 });
 
-        var worker = new AisIngestionWorker(provider, store, bus, NullLogger<AisIngestionWorker>.Instance);
+        var runner = new IntegrationRunner(
+            provider, Settings(), store, bus, NullLogger<IntegrationRunner>.Instance);
 
-        using var cts = new CancellationTokenSource();
-        await worker.StartAsync(cts.Token);
-        // Give the provider a moment to drain, then stop.
-        await Task.Delay(200);
-        cts.Cancel();
-        await worker.StopAsync(CancellationToken.None);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        await runner.RunAsync(cts.Token);
 
         Assert.Equal(2, store.Count);
         Assert.True(store.TryGet(100, out _));
         Assert.Contains(100L, published);
         Assert.Contains(200L, published);
+    }
+
+    [Fact]
+    public async Task Runner_honours_the_mmsi_filter()
+    {
+        var store = new VesselStore();
+        var bus = new InProcessVesselBus();
+        var provider = new FakeProvider(
+            new VesselUpdate { Mmsi = 100, Latitude = 50, Longitude = -1 },
+            new VesselUpdate { Mmsi = 200, Latitude = 51, Longitude = 0 });
+
+        var runner = new IntegrationRunner(
+            provider, Settings(100), store, bus, NullLogger<IntegrationRunner>.Instance);
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        await runner.RunAsync(cts.Token);
+
+        Assert.Equal(1, store.Count);
+        Assert.True(store.TryGet(100, out _));
+        Assert.False(store.TryGet(200, out _));
     }
 }

@@ -1,6 +1,5 @@
 using System.Runtime.CompilerServices;
 using System.Text.Json;
-using Microsoft.Extensions.Options;
 
 namespace AisStream.Api.Ingestion.Providers;
 
@@ -11,34 +10,29 @@ namespace AisStream.Api.Ingestion.Providers;
 /// </summary>
 public class MarineTrafficProvider : IAisProvider
 {
-    private readonly MarineTrafficOptions _options;
-    private readonly IngestionOptions _ingestion;
+    private readonly ProviderSettings _settings;
     private readonly IHttpClientFactory _httpFactory;
-    private readonly ILogger<MarineTrafficProvider> _logger;
+    private readonly ILogger _logger;
 
-    public MarineTrafficProvider(
-        IOptions<MarineTrafficOptions> options,
-        IOptions<IngestionOptions> ingestion,
-        IHttpClientFactory httpFactory,
-        ILogger<MarineTrafficProvider> logger)
+    public MarineTrafficProvider(ProviderSettings settings, IHttpClientFactory httpFactory, ILogger logger)
     {
-        _options = options.Value;
-        _ingestion = ingestion.Value;
+        _settings = settings;
         _httpFactory = httpFactory;
         _logger = logger;
     }
 
-    public string Name => "MarineTraffic";
+    public string Name => $"MarineTraffic ({_settings.Name})";
 
     public async IAsyncEnumerable<VesselUpdate> StreamAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         using var http = _httpFactory.CreateClient();
-        var box = _ingestion.BoundingBoxes.FirstOrDefault();
+        var box = _settings.BoundingBoxes.FirstOrDefault();
+        var baseUrl = _settings.Url ?? "https://services.marinetraffic.com/api/exportvessels/v:8";
 
         while (!cancellationToken.IsCancellationRequested)
         {
-            var url = $"{_options.BaseUrl}/{_options.ApiKey}/protocol:jsono/msgtype:extended";
+            var url = $"{baseUrl}/{_settings.ApiKey}/protocol:jsono/msgtype:extended";
             if (box is { Length: 2 })
             {
                 url += $"/minlat:{box[0][0]}/maxlat:{box[1][0]}/minlon:{box[0][1]}/maxlon:{box[1][1]}";
@@ -50,7 +44,7 @@ public class MarineTrafficProvider : IAisProvider
                 yield return update;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(Math.Max(10, _options.PollSeconds)), cancellationToken);
+            await Task.Delay(TimeSpan.FromSeconds(Math.Max(10, _settings.PollSeconds)), cancellationToken);
         }
     }
 

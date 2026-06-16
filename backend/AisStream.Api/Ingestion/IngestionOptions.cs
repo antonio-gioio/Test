@@ -44,9 +44,3 @@ public class IngestionOptions
             ? (aisStreamKeyPresent ? AisProviderType.AisStream : AisProviderType.Simulator)
             : Provider;
 }
-
-/// <summary>Singleton describing which provider is actually active (for status reporting).</summary>
-public record ActiveProvider(AisProviderType Type)
-{
-    public bool IsSimulated => Type == AisProviderType.Simulator;
-}

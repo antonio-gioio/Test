@@ -23,20 +23,17 @@ public class VesselsController : ControllerBase
     private readonly AppDbContext _db;
     private readonly IDistributedCache _cache;
     private readonly IngestionOptions _options;
-    private readonly ActiveProvider _provider;
 
     public VesselsController(
         VesselStore store,
         AppDbContext db,
         IDistributedCache cache,
-        IOptions<IngestionOptions> options,
-        ActiveProvider provider)
+        IOptions<IngestionOptions> options)
     {
         _store = store;
         _db = db;
         _cache = cache;
         _options = options.Value;
-        _provider = provider;
     }
 
     /// <summary>
@@ -309,11 +306,20 @@ public class VesselsController : ControllerBase
     }
 
     [HttpGet("/api/status")]
-    public object GetStatus() => new
+    public async Task<object> GetStatus()
     {
-        Mode = _provider.IsSimulated ? "simulation" : "live",
-        Provider = _provider.Type.ToString(),
-        VesselCount = _store.Count,
-        Tier = TokenService.TierOf(User).ToString(),
-    };
+        var providers = await _db.Integrations
+            .Where(i => i.Enabled)
+            .Select(i => i.Provider)
+            .ToListAsync();
+        var live = providers.Any(p => p != Ingestion.AisProviderType.Simulator);
+
+        return new
+        {
+            Mode = live ? "live" : "simulation",
+            Providers = providers.Select(p => p.ToString()).Distinct().ToArray(),
+            VesselCount = _store.Count,
+            Tier = TokenService.TierOf(User).ToString(),
+        };
+    }
 }

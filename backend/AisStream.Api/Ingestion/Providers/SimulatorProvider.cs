@@ -1,13 +1,12 @@
-using AisStream.Api.Messaging;
-using Microsoft.Extensions.Options;
+using System.Runtime.CompilerServices;
 
-namespace AisStream.Api.Services;
+namespace AisStream.Api.Ingestion.Providers;
 
 /// <summary>
-/// Generates plausible moving vessels when no aisstream.io API key is configured,
-/// so the site can be demoed end-to-end without external credentials.
+/// Built-in fake-fleet provider — generates plausible moving vessels in the English Channel,
+/// so the app works end-to-end with no external service. Just another <see cref="IAisProvider"/>.
 /// </summary>
-public class VesselSimulator : BackgroundService
+public class SimulatorProvider : IAisProvider
 {
     private static readonly TimeSpan Tick = TimeSpan.FromSeconds(2);
 
@@ -25,51 +24,45 @@ public class VesselSimulator : BackgroundService
     private static readonly string[] Destinations =
         ["ROTTERDAM", "SINGAPORE", "SHANGHAI", "HAMBURG", "NEW YORK", "ANTWERP", "FELIXSTOWE", "GENOA"];
 
-    private readonly VesselStore _store;
-    private readonly IVesselBus _bus;
-    private readonly ILogger<VesselSimulator> _logger;
     private readonly Random _random = new(42);
     private readonly List<SimulatedVessel> _fleet = [];
 
-    public VesselSimulator(VesselStore store, IVesselBus bus, ILogger<VesselSimulator> logger)
+    public SimulatorProvider(ProviderSettings settings)
     {
-        _store = store;
-        _bus = bus;
-        _logger = logger;
+        Name = $"Simulator ({settings.Name})";
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        _logger.LogInformation("Simulation mode: generating {Count} fake vessels in the English Channel area", Names.Length);
-        SpawnFleet();
+    public string Name { get; }
 
+    public async IAsyncEnumerable<VesselUpdate> StreamAsync(
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        SpawnFleet();
         using var timer = new PeriodicTimer(Tick);
-        while (await timer.WaitForNextTickAsync(stoppingToken))
+        while (await timer.WaitForNextTickAsync(cancellationToken))
         {
             foreach (var sim in _fleet)
             {
                 Advance(sim);
-                var snapshot = _store.Upsert(sim.Mmsi, v =>
+                yield return new VesselUpdate
                 {
-                    v.Name = sim.Name;
-                    v.Latitude = sim.Latitude;
-                    v.Longitude = sim.Longitude;
-                    v.SpeedOverGround = Math.Round(sim.SpeedKnots, 1);
-                    v.CourseOverGround = Math.Round(sim.CourseDegrees, 1);
-                    v.TrueHeading = Math.Round(sim.CourseDegrees);
-                    v.NavigationalStatus = 0;
-                    v.ShipType = sim.Type;
-                    v.Destination = sim.Destination;
-                    v.LastUpdate = DateTimeOffset.UtcNow;
-                });
-                await _bus.PublishAsync(snapshot, stoppingToken);
+                    Mmsi = sim.Mmsi,
+                    Name = sim.Name,
+                    Latitude = sim.Latitude,
+                    Longitude = sim.Longitude,
+                    SpeedOverGround = Math.Round(sim.SpeedKnots, 1),
+                    CourseOverGround = Math.Round(sim.CourseDegrees, 1),
+                    TrueHeading = Math.Round(sim.CourseDegrees),
+                    NavigationalStatus = 0,
+                    ShipType = sim.Type,
+                    Destination = sim.Destination,
+                };
             }
         }
     }
 
     private void SpawnFleet()
     {
-        // Roughly the English Channel / North Sea approaches.
         for (var i = 0; i < Names.Length; i++)
         {
             _fleet.Add(new SimulatedVessel
@@ -88,7 +81,6 @@ public class VesselSimulator : BackgroundService
 
     private void Advance(SimulatedVessel sim)
     {
-        // Small random walk on course and speed, then dead-reckon the position.
         sim.CourseDegrees = (sim.CourseDegrees + (_random.NextDouble() - 0.5) * 6 + 360) % 360;
         sim.SpeedKnots = Math.Clamp(sim.SpeedKnots + (_random.NextDouble() - 0.5), 2, 22);
 
@@ -99,7 +91,6 @@ public class VesselSimulator : BackgroundService
         sim.Longitude += distanceNm / 60.0 * Math.Sin(radians) /
                          Math.Max(0.2, Math.Cos(sim.Latitude * Math.PI / 180));
 
-        // Keep the fleet inside the demo box by bouncing off the edges.
         if (sim.Latitude < 49.0 || sim.Latitude > 51.8 || sim.Longitude < -5.0 || sim.Longitude > 3.0)
         {
             sim.Latitude = Math.Clamp(sim.Latitude, 49.0, 51.8);
