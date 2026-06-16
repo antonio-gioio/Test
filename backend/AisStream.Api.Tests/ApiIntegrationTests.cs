@@ -1,6 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 
 namespace AisStream.Api.Tests;
 
@@ -130,6 +133,40 @@ public class ApiIntegrationTests : IClassFixture<ApiFactory>
         var res = await client.PostAsJsonAsync("/api/billing/webhook",
             new { email = "x@y.com", tier = 2 });
         Assert.Equal(HttpStatusCode.ServiceUnavailable, res.StatusCode);
+    }
+
+    [Fact]
+    public async Task Billing_webhook_sets_tier_when_configured_with_the_secret()
+    {
+        var factory = _factory.WithWebHostBuilder(b => b.ConfigureAppConfiguration((_, c) =>
+            c.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Billing:WebhookSecret"] = "test-secret",
+            })));
+        var client = factory.CreateClient();
+        var email = NewEmail();
+        await client.PostAsJsonAsync("/api/auth/register", new { email, password = "Password123" });
+
+        var req = new HttpRequestMessage(HttpMethod.Post, "/api/billing/webhook")
+        {
+            Content = JsonContent.Create(new { email, tier = 2 }),
+        };
+        req.Headers.Add("X-Webhook-Secret", "test-secret");
+        var res = await client.SendAsync(req);
+        Assert.Equal(HttpStatusCode.NoContent, res.StatusCode);
+
+        // Wrong secret is rejected.
+        var bad = new HttpRequestMessage(HttpMethod.Post, "/api/billing/webhook")
+        {
+            Content = JsonContent.Create(new { email, tier = 0 }),
+        };
+        bad.Headers.Add("X-Webhook-Secret", "wrong");
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.SendAsync(bad)).StatusCode);
+
+        // The user's tier is now Enterprise.
+        var login = await client.PostAsJsonAsync("/api/auth/login", new { email, password = "Password123" });
+        var tier = (await login.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("tier").GetString();
+        Assert.Equal("Enterprise", tier);
     }
 
     [Fact]
