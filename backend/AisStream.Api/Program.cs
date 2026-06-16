@@ -122,17 +122,23 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<AppDbContext>("database");
 
-// Throttle auth endpoints to blunt credential-stuffing / brute force.
+// Throttle auth endpoints to blunt credential-stuffing / brute force. The limit is read from
+// request services so test/host config overrides apply (eagerly-read config would not).
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    options.AddPolicy("auth", context => RateLimitPartition.GetFixedWindowLimiter(
-        partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-        factory: _ => new FixedWindowRateLimiterOptions
-        {
-            PermitLimit = 10,
-            Window = TimeSpan.FromMinutes(1),
-        }));
+    options.AddPolicy("auth", context =>
+    {
+        var limit = context.RequestServices.GetRequiredService<IConfiguration>()
+            .GetValue("RateLimit:AuthPermitLimit", 10);
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = limit,
+                Window = TimeSpan.FromMinutes(1),
+            });
+    });
 });
 
 // Vessel bus: Redis pub/sub when configured (multi-node), otherwise in-process (single node).

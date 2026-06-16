@@ -35,6 +35,7 @@ public class ApiFactory : WebApplicationFactory<Program>
             {
                 ["ConnectionStrings:Postgres"] = ConnectionString,
                 ["Ais:Provider"] = "Simulator", // deterministic (hosted services are removed anyway)
+                ["RateLimit:AuthPermitLimit"] = "100000", // don't throttle the test suite
             });
         });
 

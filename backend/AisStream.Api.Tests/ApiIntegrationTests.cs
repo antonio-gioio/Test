@@ -135,6 +135,42 @@ public class ApiIntegrationTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task Refresh_token_rotates_and_old_one_is_rejected()
+    {
+        var client = _factory.CreateClient();
+        var reg = await client.PostAsJsonAsync("/api/auth/register",
+            new { email = NewEmail(), password = "Password123" });
+        var first = await reg.Content.ReadFromJsonAsync<JsonElement>();
+        var refresh1 = first.GetProperty("refreshToken").GetString()!;
+
+        // Use the refresh token -> new access + rotated refresh token.
+        var r1 = await client.PostAsJsonAsync("/api/auth/refresh", new { refreshToken = refresh1 });
+        Assert.Equal(HttpStatusCode.OK, r1.StatusCode);
+        var refreshed = await r1.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.False(string.IsNullOrEmpty(refreshed.GetProperty("token").GetString()));
+        Assert.NotEqual(refresh1, refreshed.GetProperty("refreshToken").GetString());
+
+        // The old (rotated) refresh token is now rejected.
+        var r2 = await client.PostAsJsonAsync("/api/auth/refresh", new { refreshToken = refresh1 });
+        Assert.Equal(HttpStatusCode.Unauthorized, r2.StatusCode);
+    }
+
+    [Fact]
+    public async Task Logout_revokes_the_refresh_token()
+    {
+        var client = _factory.CreateClient();
+        var reg = await client.PostAsJsonAsync("/api/auth/register",
+            new { email = NewEmail(), password = "Password123" });
+        var refresh = (await reg.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("refreshToken").GetString()!;
+
+        await client.PostAsJsonAsync("/api/auth/logout", new { refreshToken = refresh });
+
+        var res = await client.PostAsJsonAsync("/api/auth/refresh", new { refreshToken = refresh });
+        Assert.Equal(HttpStatusCode.Unauthorized, res.StatusCode);
+    }
+
+    [Fact]
     public async Task Register_rejects_weak_password()
     {
         var client = _factory.CreateClient();

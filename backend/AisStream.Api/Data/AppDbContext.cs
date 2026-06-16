@@ -14,6 +14,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<FollowedVessel> FollowedVessels => Set<FollowedVessel>();
     public DbSet<WatchArea> WatchAreas => Set<WatchArea>();
     public DbSet<Integration> Integrations => Set<Integration>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -61,6 +62,16 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
         {
             entity.HasKey(i => i.Id);
             entity.HasIndex(i => i.Name).IsUnique();
+        });
+
+        builder.Entity<RefreshToken>(entity =>
+        {
+            entity.HasKey(t => t.Id);
+            entity.HasIndex(t => t.Token).IsUnique();
+            entity.HasOne(t => t.User)
+                .WithMany()
+                .HasForeignKey(t => t.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }
