@@ -68,6 +68,14 @@ export class AuthService {
       .pipe(tap((res) => this.setAccessToken(res.token)));
   }
 
+  forgotPassword(email: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>('/api/auth/forgot-password', { email });
+  }
+
+  resetPassword(email: string, token: string, newPassword: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>('/api/auth/reset-password', { email, token, newPassword });
+  }
+
   /** Exchanges the stored refresh token for a fresh access token. Used by the interceptor on 401. */
   refresh(): Observable<AuthResponse> {
     const refreshToken = localStorage.getItem(REFRESH_KEY);

@@ -35,11 +35,13 @@
     </mat-chip-set>
   </div>
 } @else {
-  <form class="auth-form" (ngSubmit)="submit()">
-    <mat-button-toggle-group [value]="mode()" (change)="mode.set($event.value)" hideSingleSelectionIndicator>
-      <mat-button-toggle value="login">Sign in</mat-button-toggle>
-      <mat-button-toggle value="register">Register</mat-button-toggle>
-    </mat-button-toggle-group>
+  <form class="auth-form" (ngSubmit)="mode() === 'forgot' ? sendReset() : submit()">
+    @if (mode() !== 'forgot') {
+      <mat-button-toggle-group [value]="mode()" (change)="mode.set($event.value)" hideSingleSelectionIndicator>
+        <mat-button-toggle value="login">Sign in</mat-button-toggle>
+        <mat-button-toggle value="register">Register</mat-button-toggle>
+      </mat-button-toggle-group>
+    }
 
     <mat-form-field appearance="outline">
       <mat-label>Email</mat-label>
@@ -47,18 +49,30 @@
         [ngModel]="email()" (ngModelChange)="email.set($event)" required />
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
-      <mat-label>Password</mat-label>
-      <input matInput type="password" name="password" autocomplete="current-password"
-        [ngModel]="password()" (ngModelChange)="password.set($event)" required />
-      <mat-hint>8+ chars, 1 uppercase</mat-hint>
-    </mat-form-field>
+    @if (mode() !== 'forgot') {
+      <mat-form-field appearance="outline">
+        <mat-label>Password</mat-label>
+        <input matInput type="password" name="password" autocomplete="current-password"
+          [ngModel]="password()" (ngModelChange)="password.set($event)" required />
+        <mat-hint>8+ chars, 1 uppercase</mat-hint>
+      </mat-form-field>
+    }
 
     @if (error()) {
       <p class="error">{{ error() }}</p>
     }
+    @if (info()) {
+      <p class="hint">{{ info() }}</p>
+    }
     <button mat-flat-button color="primary" type="submit" [disabled]="busy()">
-      {{ mode() === 'login' ? 'Sign in' : 'Create account' }}
+      {{ mode() === 'login' ? 'Sign in' : mode() === 'register' ? 'Create account' : 'Send reset email' }}
     </button>
+
+    @if (mode() === 'login') {
+      <button mat-button type="button" class="forgot-link" (click)="mode.set('forgot')">Forgot password?</button>
+    }
+    @if (mode() === 'forgot') {
+      <button mat-button type="button" class="forgot-link" (click)="mode.set('login')">Back to sign in</button>
+    }
   </form>
 }

@@ -27,10 +27,11 @@ import { VesselService } from '../../services/vessel.service';
 export class AccountComponent {
   protected readonly auth = inject(AuthService);
   protected readonly vesselService = inject(VesselService);
-  protected readonly mode = signal<'login' | 'register'>('login');
+  protected readonly mode = signal<'login' | 'register' | 'forgot'>('login');
   protected readonly email = signal('');
   protected readonly password = signal('');
   protected readonly error = signal<string | null>(null);
+  protected readonly info = signal<string | null>(null);
   protected readonly busy = signal(false);
   protected readonly tiers: Tier[] = ['Free', 'Pro', 'Enterprise'];
 
@@ -51,6 +52,22 @@ export class AccountComponent {
         this.busy.set(false);
         const body = err?.error;
         this.error.set(body?.error ?? body?.errors?.[0] ?? 'Authentication failed.');
+      },
+    });
+  }
+
+  protected sendReset(): void {
+    this.error.set(null);
+    this.info.set(null);
+    this.busy.set(true);
+    this.auth.forgotPassword(this.email()).subscribe({
+      next: (r) => {
+        this.busy.set(false);
+        this.info.set(r.message);
+      },
+      error: () => {
+        this.busy.set(false);
+        this.info.set('If that email exists, a reset link has been sent.');
       },
     });
   }

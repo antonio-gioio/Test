@@ -45,6 +45,18 @@ describe('AuthService', () => {
     expect(localStorage.getItem('ais.refresh')).toBe('refresh1');
   });
 
+  it('posts to forgot-password and reset-password', () => {
+    service.forgotPassword('a@b.com').subscribe();
+    const forgot = http.expectOne('/api/auth/forgot-password');
+    expect(forgot.request.body).toEqual({ email: 'a@b.com' });
+    forgot.flush({ message: 'ok' });
+
+    service.resetPassword('a@b.com', 'tok', 'NewPass123').subscribe();
+    const reset = http.expectOne('/api/auth/reset-password');
+    expect(reset.request.body).toEqual({ email: 'a@b.com', token: 'tok', newPassword: 'NewPass123' });
+    reset.flush({ message: 'ok' });
+  });
+
   it('clears tokens and calls logout on the server', () => {
     localStorage.setItem('ais.token', 'access1');
     localStorage.setItem('ais.refresh', 'refresh1');
