@@ -170,6 +170,35 @@ public class ApiIntegrationTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task History_endpoint_returns_a_snapshot()
+    {
+        var client = _factory.CreateClient();
+        var at = Uri.EscapeDataString(DateTimeOffset.UtcNow.ToString("o"));
+        var res = await client.GetAsync(
+            $"/api/vessels/history?latMin=49&lonMin=-3&latMax=51&lonMax=-1&at={at}");
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        var body = await res.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(body.TryGetProperty("vessels", out _));
+        Assert.True(body.TryGetProperty("count", out _));
+    }
+
+    [Fact]
+    public async Task Follow_and_unfollow_via_rest_update_the_list()
+    {
+        var (client, token) = await RegisteredClientAsync();
+
+        var follow = await client.SendAsync(Authed(HttpMethod.Put, "/api/account/followed/123456789", token));
+        Assert.Equal(HttpStatusCode.OK, follow.StatusCode);
+        var afterFollow = await follow.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Contains(afterFollow.EnumerateArray().Select(e => e.GetInt64()), m => m == 123456789);
+
+        var unfollow = await client.SendAsync(Authed(HttpMethod.Delete, "/api/account/followed/123456789", token));
+        Assert.Equal(HttpStatusCode.OK, unfollow.StatusCode);
+        var afterUnfollow = await unfollow.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.DoesNotContain(afterUnfollow.EnumerateArray().Select(e => e.GetInt64()), m => m == 123456789);
+    }
+
+    [Fact]
     public async Task Nearest_endpoint_returns_a_list()
     {
         var client = _factory.CreateClient();
