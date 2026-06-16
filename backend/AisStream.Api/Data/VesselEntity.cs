@@ -21,6 +21,11 @@ public class VesselEntity
     public string? ShipType { get; set; }
     public string? Destination { get; set; }
     public string? CallSign { get; set; }
+    public long? Imo { get; set; }
+    public double? Length { get; set; }
+    public double? Width { get; set; }
+    public double? Draught { get; set; }
+    public string? Eta { get; set; }
     public DateTimeOffset LastUpdate { get; set; }
 }
 

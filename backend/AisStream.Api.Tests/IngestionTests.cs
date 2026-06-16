@@ -39,6 +39,20 @@ public class VesselUpdateTests
     {
         Assert.Equal(expected, new VesselUpdate { Mmsi = 1, Latitude = lat, Longitude = lon }.HasPosition);
     }
+
+    [Fact]
+    public void ApplyTo_merges_static_data_fields()
+    {
+        var vessel = new Vessel { Mmsi = 1, Imo = 123, Length = 100 };
+
+        // A later update with only ETA should keep IMO/length and add ETA.
+        new VesselUpdate { Mmsi = 1, Eta = "06-15 12:00 UTC", Draught = 8.5 }.ApplyTo(vessel);
+
+        Assert.Equal(123, vessel.Imo);
+        Assert.Equal(100, vessel.Length);
+        Assert.Equal(8.5, vessel.Draught);
+        Assert.Equal("06-15 12:00 UTC", vessel.Eta);
+    }
 }
 
 public class ProviderResolutionTests

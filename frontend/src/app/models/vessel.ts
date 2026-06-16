@@ -10,6 +10,11 @@ export interface Vessel {
   shipType: string | null;
   destination: string | null;
   callSign: string | null;
+  imo: number | null;
+  length: number | null;
+  width: number | null;
+  draught: number | null;
+  eta: string | null;
   lastUpdate: string;
 }
 

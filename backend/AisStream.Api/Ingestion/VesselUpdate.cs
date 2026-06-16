@@ -21,6 +21,11 @@ public sealed class VesselUpdate
     public string? ShipType { get; init; }
     public string? Destination { get; init; }
     public string? CallSign { get; init; }
+    public long? Imo { get; init; }
+    public double? Length { get; init; }
+    public double? Width { get; init; }
+    public double? Draught { get; init; }
+    public string? Eta { get; init; }
 
     public bool HasPosition => Latitude is { } lat && Longitude is { } lon
         && lat is >= -90 and <= 90 && lon is >= -180 and <= 180;
@@ -38,6 +43,11 @@ public sealed class VesselUpdate
         if (!string.IsNullOrWhiteSpace(ShipType)) v.ShipType = ShipType;
         if (!string.IsNullOrWhiteSpace(Destination)) v.Destination = Destination.Trim();
         if (!string.IsNullOrWhiteSpace(CallSign)) v.CallSign = CallSign.Trim();
+        if (Imo.HasValue) v.Imo = Imo;
+        if (Length.HasValue) v.Length = Length;
+        if (Width.HasValue) v.Width = Width;
+        if (Draught.HasValue) v.Draught = Draught;
+        if (!string.IsNullOrWhiteSpace(Eta)) v.Eta = Eta.Trim();
         v.LastUpdate = DateTimeOffset.UtcNow;
     }
 }

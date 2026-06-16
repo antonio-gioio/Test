@@ -26,6 +26,11 @@ public static class VesselMapping
         ShipType = e.ShipType,
         Destination = e.Destination,
         CallSign = e.CallSign,
+        Imo = e.Imo,
+        Length = e.Length,
+        Width = e.Width,
+        Draught = e.Draught,
+        Eta = e.Eta,
         LastUpdate = e.LastUpdate,
     };
 
@@ -41,6 +46,11 @@ public static class VesselMapping
         e.ShipType = v.ShipType;
         e.Destination = v.Destination;
         e.CallSign = v.CallSign;
+        e.Imo = v.Imo;
+        e.Length = v.Length;
+        e.Width = v.Width;
+        e.Draught = v.Draught;
+        e.Eta = v.Eta;
         e.LastUpdate = v.LastUpdate;
     }
 }

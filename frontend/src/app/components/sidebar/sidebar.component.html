@@ -47,6 +47,22 @@
           <dt>Destination</dt>
           <dd>{{ vessel.destination }}</dd>
         }
+        @if (vessel.eta) {
+          <dt>ETA</dt>
+          <dd>{{ vessel.eta }}</dd>
+        }
+        @if (vessel.imo) {
+          <dt>IMO</dt>
+          <dd>{{ vessel.imo }}</dd>
+        }
+        @if (vessel.length) {
+          <dt>Size</dt>
+          <dd>{{ vessel.length | number: '1.0-0' }} × {{ vessel.width | number: '1.0-0' }} m</dd>
+        }
+        @if (vessel.draught) {
+          <dt>Draught</dt>
+          <dd>{{ vessel.draught | number: '1.1-1' }} m</dd>
+        }
         <dt>Position</dt>
         <dd>{{ vessel.latitude | number: '1.4-4' }}, {{ vessel.longitude | number: '1.4-4' }}</dd>
         <dt>Last update</dt>

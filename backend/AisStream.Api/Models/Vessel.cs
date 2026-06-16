@@ -24,6 +24,22 @@ public class Vessel
     public string? ShipType { get; set; }
     public string? Destination { get; set; }
     public string? CallSign { get; set; }
+
+    /// <summary>IMO number (permanent vessel identifier), from static data.</summary>
+    public long? Imo { get; set; }
+
+    /// <summary>Overall length in metres (bow-to-stern dimension sum).</summary>
+    public double? Length { get; set; }
+
+    /// <summary>Beam/width in metres (port-to-starboard dimension sum).</summary>
+    public double? Width { get; set; }
+
+    /// <summary>Maximum static draught in metres.</summary>
+    public double? Draught { get; set; }
+
+    /// <summary>Estimated time of arrival as reported (raw AIS ETA string).</summary>
+    public string? Eta { get; set; }
+
     public DateTimeOffset LastUpdate { get; set; }
 
     public Vessel Clone() => (Vessel)MemberwiseClone();

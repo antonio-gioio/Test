@@ -130,16 +130,55 @@ public class AisStreamProvider : IAisProvider
         };
     }
 
-    private static VesselUpdate StaticUpdate(long mmsi, string? name, JsonElement s) => new()
+    private static VesselUpdate StaticUpdate(long mmsi, string? name, JsonElement s)
     {
-        Mmsi = mmsi,
-        Name = name,
-        ShipType = s.TryGetProperty("Type", out var t) && t.TryGetInt32(out var code)
-            ? ShipTypes.Describe(code)
-            : null,
-        Destination = s.TryGetProperty("Destination", out var d) ? d.GetString() : null,
-        CallSign = s.TryGetProperty("CallSign", out var c) ? c.GetString() : null,
-    };
+        double? length = null, width = null;
+        if (s.TryGetProperty("Dimension", out var dim) && dim.ValueKind == JsonValueKind.Object)
+        {
+            length = Add(Num(dim, "A"), Num(dim, "B")); // bow + stern
+            width = Add(Num(dim, "C"), Num(dim, "D")); // port + starboard
+        }
+
+        return new VesselUpdate
+        {
+            Mmsi = mmsi,
+            Name = name,
+            ShipType = s.TryGetProperty("Type", out var t) && t.TryGetInt32(out var code)
+                ? ShipTypes.Describe(code)
+                : null,
+            Destination = s.TryGetProperty("Destination", out var d) ? d.GetString() : null,
+            CallSign = s.TryGetProperty("CallSign", out var c) ? c.GetString() : null,
+            Imo = s.TryGetProperty("ImoNumber", out var imo) && imo.TryGetInt64(out var imoVal) && imoVal > 0
+                ? imoVal
+                : null,
+            Length = length,
+            Width = width,
+            Draught = Num(s, "MaximumStaticDraught"),
+            Eta = FormatEta(s),
+        };
+    }
+
+    private static double? Add(double? a, double? b) =>
+        a is null && b is null ? null : (a ?? 0) + (b ?? 0);
+
+    private static string? FormatEta(JsonElement s)
+    {
+        if (!s.TryGetProperty("Eta", out var eta) || eta.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        var month = (int?)Num(eta, "Month");
+        var day = (int?)Num(eta, "Day");
+        var hour = (int?)Num(eta, "Hour");
+        var minute = (int?)Num(eta, "Minute");
+        if (month is null or 0 || day is null or 0)
+        {
+            return null;
+        }
+
+        return $"{month:00}-{day:00} {hour ?? 0:00}:{minute ?? 0:00} UTC";
+    }
 
     private static double? Num(JsonElement element, string property) =>
         element.TryGetProperty(property, out var value) && value.ValueKind == JsonValueKind.Number

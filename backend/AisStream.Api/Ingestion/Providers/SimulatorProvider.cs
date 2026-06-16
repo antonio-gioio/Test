@@ -56,6 +56,11 @@ public class SimulatorProvider : IAisProvider
                     NavigationalStatus = 0,
                     ShipType = sim.Type,
                     Destination = sim.Destination,
+                    Imo = sim.Imo,
+                    Length = sim.Length,
+                    Width = sim.Width,
+                    Draught = sim.Draught,
+                    Eta = sim.Eta,
                 };
             }
         }
@@ -65,6 +70,7 @@ public class SimulatorProvider : IAisProvider
     {
         for (var i = 0; i < Names.Length; i++)
         {
+            var length = 80 + _random.Next(0, 280);
             _fleet.Add(new SimulatedVessel
             {
                 Mmsi = 200_000_000 + i,
@@ -75,6 +81,11 @@ public class SimulatorProvider : IAisProvider
                 Longitude = -4.5 + _random.NextDouble() * 7.0,
                 SpeedKnots = 5 + _random.NextDouble() * 15,
                 CourseDegrees = _random.NextDouble() * 360,
+                Imo = 9_000_000 + i,
+                Length = length,
+                Width = Math.Round(length / 7.0),
+                Draught = Math.Round(4 + _random.NextDouble() * 12, 1),
+                Eta = $"{_random.Next(1, 13):00}-{_random.Next(1, 28):00} {_random.Next(0, 24):00}:00 UTC",
             });
         }
     }
@@ -109,5 +120,10 @@ public class SimulatorProvider : IAisProvider
         public double Longitude { get; set; }
         public double SpeedKnots { get; set; }
         public double CourseDegrees { get; set; }
+        public long Imo { get; init; }
+        public double Length { get; init; }
+        public double Width { get; init; }
+        public double Draught { get; init; }
+        public required string Eta { get; init; }
     }
 }
