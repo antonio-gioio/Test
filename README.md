@@ -101,9 +101,10 @@ Enforced server-side over both REST and SignalR:
 | Pro        | 100 sq°      | 24 hours      | 2 s     | 50               |
 | Enterprise | Unlimited    | 30 days       | 2 s     | Unlimited        |
 
-Anonymous visitors are treated as Free. Tier is carried in the JWT; the
-`POST /api/account/tier` endpoint changes it and reissues the token (in a real product this
-would be driven by a billing webhook, not the client).
+Anonymous visitors are treated as Free. Tier is carried in the JWT. Self-service tier change
+(`POST /api/account/tier`) is allowed outside Production for demos/testing; in Production the
+tier is set by an admin or the secret-protected billing webhook (`/api/billing/webhook`), so
+users can't grant themselves a paid plan. A per-tier rate limit applies to heavy endpoints.
 
 ## Running it
 
