@@ -19,17 +19,20 @@ public class AuthController : ControllerBase
     private readonly TokenService _tokenService;
     private readonly AppDbContext _db;
     private readonly JwtOptions _jwt;
+    private readonly Services.IEmailSender _email;
 
     public AuthController(
         UserManager<ApplicationUser> userManager,
         TokenService tokenService,
         AppDbContext db,
-        IOptions<JwtOptions> jwt)
+        IOptions<JwtOptions> jwt,
+        Services.IEmailSender email)
     {
         _userManager = userManager;
         _tokenService = tokenService;
         _db = db;
         _jwt = jwt.Value;
+        _email = email;
     }
 
     public record AuthRequest([Required, EmailAddress] string Email, [Required, MinLength(8)] string Password);
@@ -76,6 +79,49 @@ public class AuthController : ControllerBase
 
         existing.RevokedAt = DateTimeOffset.UtcNow; // rotate
         return await IssueAsync(existing.User);
+    }
+
+    public record ForgotPasswordRequest([Required, EmailAddress] string Email);
+    public record ResetPasswordRequest(
+        [Required, EmailAddress] string Email, [Required] string Token, [Required, MinLength(8)] string NewPassword);
+
+    /// <summary>Emails a password-reset token. Always returns 200 to avoid leaking which emails exist.</summary>
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request)
+    {
+        var user = await _userManager.FindByEmailAsync(request.Email);
+        if (user is not null)
+        {
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            await _email.SendAsync(request.Email, "Reset your AIS Tracker password",
+                $"Use this token to reset your password:\n\n{token}");
+        }
+
+        return Ok(new { message = "If that email exists, a reset link has been sent." });
+    }
+
+    /// <summary>Resets the password using a token from the reset email; revokes existing sessions.</summary>
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword(ResetPasswordRequest request)
+    {
+        var user = await _userManager.FindByEmailAsync(request.Email);
+        if (user is null)
+        {
+            return BadRequest(new { error = "Invalid reset request." });
+        }
+
+        var result = await _userManager.ResetPasswordAsync(user, request.Token, request.NewPassword);
+        if (!result.Succeeded)
+        {
+            return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
+        }
+
+        // Invalidate existing refresh tokens after a password reset.
+        await _db.RefreshTokens
+            .Where(t => t.UserId == user.Id && t.RevokedAt == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAt, DateTimeOffset.UtcNow));
+
+        return Ok(new { message = "Password reset successfully." });
     }
 
     [HttpPost("logout")]

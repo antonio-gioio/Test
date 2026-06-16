@@ -1,8 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using AisStream.Api.Data;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 namespace AisStream.Api.Tests;
@@ -327,6 +330,41 @@ public class ApiIntegrationTests : IClassFixture<ApiFactory>
         // The old (rotated) refresh token is now rejected.
         var r2 = await client.PostAsJsonAsync("/api/auth/refresh", new { refreshToken = refresh1 });
         Assert.Equal(HttpStatusCode.Unauthorized, r2.StatusCode);
+    }
+
+    [Fact]
+    public async Task Forgot_password_always_returns_ok()
+    {
+        var client = _factory.CreateClient();
+        var existing = await client.PostAsJsonAsync("/api/auth/forgot-password", new { email = NewEmail() });
+        Assert.Equal(HttpStatusCode.OK, existing.StatusCode); // no user-enumeration leak
+    }
+
+    [Fact]
+    public async Task Reset_password_with_a_valid_token_changes_the_password()
+    {
+        var client = _factory.CreateClient();
+        var email = NewEmail();
+        await client.PostAsJsonAsync("/api/auth/register", new { email, password = "Password123" });
+
+        // Generate a real reset token via Identity (as the email flow would deliver).
+        string token;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var user = await users.FindByEmailAsync(email);
+            token = await users.GeneratePasswordResetTokenAsync(user!);
+        }
+
+        var reset = await client.PostAsJsonAsync("/api/auth/reset-password",
+            new { email, token, newPassword = "NewPassword456" });
+        Assert.Equal(HttpStatusCode.OK, reset.StatusCode);
+
+        // New password works; old one no longer does.
+        var newLogin = await client.PostAsJsonAsync("/api/auth/login", new { email, password = "NewPassword456" });
+        Assert.Equal(HttpStatusCode.OK, newLogin.StatusCode);
+        var oldLogin = await client.PostAsJsonAsync("/api/auth/login", new { email, password = "Password123" });
+        Assert.Equal(HttpStatusCode.Unauthorized, oldLogin.StatusCode);
     }
 
     [Fact]
