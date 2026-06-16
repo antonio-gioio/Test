@@ -35,6 +35,7 @@ export class MapComponent implements AfterViewInit, OnDestroy {
   private static readonly ClusterZoom = 9;
 
   private map: L.Map | null = null;
+  private tileLayer: L.TileLayer | null = null;
   private readonly markers = new Map<number, L.Marker>();
   private trackLine: L.Polyline | null = null;
   private clusterLayer: L.LayerGroup | null = null;
@@ -67,6 +68,14 @@ export class MapComponent implements AfterViewInit, OnDestroy {
       }
     });
 
+    // Swap the basemap on the dark/light toggle.
+    effect(() => {
+      this.vesselService.darkMap();
+      if (this.map) {
+        this.applyBasemap();
+      }
+    });
+
     effect(() => {
       const vessel = this.vesselService.selectedVessel();
       if (this.map && vessel) {
@@ -86,11 +95,7 @@ export class MapComponent implements AfterViewInit, OnDestroy {
       worldCopyJump: true,
     });
 
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    }).addTo(this.map);
+    this.applyBasemap();
 
     // Drive the server-side subscription from the visible bounds.
     this.map.on('moveend', () => this.publishViewport());
@@ -102,6 +107,23 @@ export class MapComponent implements AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     this.map?.remove();
     this.map = null;
+  }
+
+  private applyBasemap(): void {
+    if (!this.map) {
+      return;
+    }
+    this.tileLayer?.remove();
+    this.tileLayer = this.vesselService.darkMap()
+      ? L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '&copy; OpenStreetMap, &copy; CARTO',
+        })
+      : L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        });
+    this.tileLayer.addTo(this.map);
   }
 
   private publishViewport(): void {

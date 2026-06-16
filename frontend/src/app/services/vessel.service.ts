@@ -75,6 +75,9 @@ export class VesselService {
   /** When on, clicking two points on the map measures the distance between them. */
   readonly measureMode = signal(false);
 
+  /** Dark nautical basemap toggle. */
+  readonly darkMap = signal(false);
+
   // ---- Historical playback ----
   readonly playbackActive = signal(false);
   readonly playbackPlaying = signal(false);

@@ -11,6 +11,14 @@
         {{ mode === 'live' ? 'Live feed' : 'Simulation' }}
       </span>
     }
+    <button
+      mat-icon-button
+      class="basemap-btn"
+      (click)="vesselService.darkMap.set(!vesselService.darkMap())"
+      [attr.aria-label]="vesselService.darkMap() ? 'Light map' : 'Dark map'"
+    >
+      <mat-icon>{{ vesselService.darkMap() ? 'light_mode' : 'dark_mode' }}</mat-icon>
+    </button>
     <span class="badge tier">{{ auth.tier() }}</span>
     @if (auth.account()?.isAdmin) {
       <button mat-stroked-button class="admin-btn" (click)="showAdmin.set(true)">
