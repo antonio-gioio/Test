@@ -35,8 +35,7 @@ public class AccountController : ControllerBase
         _db = db;
         _tokenService = tokenService;
         _store = store;
-        // Self-service tier is allowed when explicitly enabled, or (by default) outside Production.
-        _selfServiceTier = billing.Value.AllowSelfServiceTier ?? !env.IsProduction();
+        _selfServiceTier = billing.Value.SelfServiceAllowed(env.IsProduction());
     }
 
     public record AccountResponse(

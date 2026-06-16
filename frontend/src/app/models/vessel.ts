@@ -22,6 +22,7 @@ export interface FeedStatus {
   mode: 'live' | 'simulation';
   vesselCount: number;
   tier: string;
+  selfServiceTier: boolean;
 }
 
 export interface TrackPoint {

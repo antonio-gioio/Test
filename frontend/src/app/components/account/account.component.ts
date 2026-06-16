@@ -7,6 +7,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { AuthService, Tier } from '../../services/auth.service';
+import { VesselService } from '../../services/vessel.service';
 
 @Component({
   selector: 'app-account',
@@ -25,6 +26,7 @@ import { AuthService, Tier } from '../../services/auth.service';
 })
 export class AccountComponent {
   protected readonly auth = inject(AuthService);
+  protected readonly vesselService = inject(VesselService);
   protected readonly mode = signal<'login' | 'register'>('login');
   protected readonly email = signal('');
   protected readonly password = signal('');

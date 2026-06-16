@@ -9,12 +9,16 @@
       class="tiers"
       [value]="account.tier"
       (change)="changeTier($event.value)"
+      [disabled]="!vesselService.selfServiceTier()"
       hideSingleSelectionIndicator
     >
       @for (tier of tiers; track tier) {
         <mat-button-toggle [value]="tier">{{ tier }}</mat-button-toggle>
       }
     </mat-button-toggle-group>
+    @if (!vesselService.selfServiceTier()) {
+      <span class="hint">Plan changes are managed by billing.</span>
+    }
 
     <mat-chip-set>
       <mat-chip disabled>

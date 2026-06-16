@@ -14,4 +14,7 @@ public class BillingOptions
 
     /// <summary>Shared secret for the billing webhook (e.g. a Stripe webhook signing secret).</summary>
     public string WebhookSecret { get; set; } = "";
+
+    /// <summary>Whether users may change their own tier (default: only outside Production).</summary>
+    public bool SelfServiceAllowed(bool isProduction) => AllowSelfServiceTier ?? !isProduction;
 }

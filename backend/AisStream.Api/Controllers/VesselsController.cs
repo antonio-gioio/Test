@@ -23,17 +23,21 @@ public class VesselsController : ControllerBase
     private readonly AppDbContext _db;
     private readonly IDistributedCache _cache;
     private readonly IngestionOptions _options;
+    private readonly bool _selfServiceTier;
 
     public VesselsController(
         VesselStore store,
         AppDbContext db,
         IDistributedCache cache,
-        IOptions<IngestionOptions> options)
+        IOptions<IngestionOptions> options,
+        IOptions<Auth.BillingOptions> billing,
+        IWebHostEnvironment env)
     {
         _store = store;
         _db = db;
         _cache = cache;
         _options = options.Value;
+        _selfServiceTier = billing.Value.SelfServiceAllowed(env.IsProduction());
     }
 
     /// <summary>
@@ -446,6 +450,7 @@ public class VesselsController : ControllerBase
             Providers = providers.Select(p => p.ToString()).Distinct().ToArray(),
             VesselCount = _store.Count,
             Tier = TokenService.TierOf(User).ToString(),
+            SelfServiceTier = _selfServiceTier,
         };
     }
 }

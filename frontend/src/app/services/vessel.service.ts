@@ -53,6 +53,7 @@ export class VesselService {
 
   readonly connectionState = signal<ConnectionState>('disconnected');
   readonly feedMode = signal<'live' | 'simulation' | null>(null);
+  readonly selfServiceTier = signal(true);
   readonly viewportMessage = signal<string | null>(null);
   readonly vessels = computed(() => [...this.vesselMap().values()]);
   readonly vesselCount = computed(() => this.vesselMap().size);
@@ -95,7 +96,10 @@ export class VesselService {
 
   start(): void {
     this.http.get<FeedStatus>('/api/status').subscribe({
-      next: (status) => this.feedMode.set(status.mode),
+      next: (status) => {
+        this.feedMode.set(status.mode);
+        this.selfServiceTier.set(status.selfServiceTier);
+      },
       error: () => this.feedMode.set(null),
     });
     this.reconnect();
