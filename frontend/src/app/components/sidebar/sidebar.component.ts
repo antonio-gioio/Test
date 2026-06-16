@@ -5,6 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { relativeTime } from '../../models/time';
 import { navStatusLabel, Vessel } from '../../models/vessel';
 import { AuthService } from '../../services/auth.service';
 import { VesselService } from '../../services/vessel.service';
@@ -30,6 +31,7 @@ export class SidebarComponent {
   protected readonly search = signal('');
   protected readonly globalResults = signal<Vessel[]>([]);
   protected readonly navStatusLabel = navStatusLabel;
+  protected readonly relativeTime = relativeTime;
 
   protected isFollowed(mmsi: number): boolean {
     return this.auth.account()?.followedMmsis.includes(mmsi) ?? false;

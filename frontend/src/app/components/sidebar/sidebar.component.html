@@ -66,7 +66,7 @@
         <dt>Position</dt>
         <dd>{{ vessel.latitude | number: '1.4-4' }}, {{ vessel.longitude | number: '1.4-4' }}</dd>
         <dt>Last update</dt>
-        <dd>{{ vessel.lastUpdate | date: 'HH:mm:ss' }}</dd>
+        <dd>{{ relativeTime(vessel.lastUpdate) }} ({{ vessel.lastUpdate | date: 'HH:mm:ss' }})</dd>
       </dl>
       <div class="actions">
         @if (auth.isLoggedIn()) {
