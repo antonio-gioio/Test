@@ -8,6 +8,7 @@ import {
   viewChild,
 } from '@angular/core';
 import * as L from 'leaflet';
+import { distanceNm } from '../../models/geo';
 import { shipTypeColor, Vessel } from '../../models/vessel';
 import { VesselService } from '../../services/vessel.service';
 
@@ -38,6 +39,8 @@ export class MapComponent implements AfterViewInit, OnDestroy {
   private trackLine: L.Polyline | null = null;
   private clusterLayer: L.LayerGroup | null = null;
   private historyLayer: L.LayerGroup | null = null;
+  private measureLayer: L.LayerGroup | null = null;
+  private measurePoints: L.LatLng[] = [];
   private clusterMode = false;
 
   constructor() {
@@ -54,6 +57,13 @@ export class MapComponent implements AfterViewInit, OnDestroy {
       const vessels = this.vesselService.playbackVessels();
       if (this.map) {
         this.renderHistory(active, vessels);
+      }
+    });
+
+    // Clear any measurement when measure mode is turned off.
+    effect(() => {
+      if (!this.vesselService.measureMode()) {
+        this.clearMeasure();
       }
     });
 
@@ -84,6 +94,7 @@ export class MapComponent implements AfterViewInit, OnDestroy {
 
     // Drive the server-side subscription from the visible bounds.
     this.map.on('moveend', () => this.publishViewport());
+    this.map.on('click', (e: L.LeafletMouseEvent) => this.onMapClick(e));
     this.publishViewport();
     this.syncMarkers(this.vesselService.vessels());
   }
@@ -252,6 +263,41 @@ export class MapComponent implements AfterViewInit, OnDestroy {
   private clearTrack(): void {
     this.trackLine?.remove();
     this.trackLine = null;
+  }
+
+  private onMapClick(e: L.LeafletMouseEvent): void {
+    if (!this.map || !this.vesselService.measureMode()) {
+      return;
+    }
+
+    // Start a fresh measurement once two points are already placed.
+    if (this.measurePoints.length >= 2) {
+      this.clearMeasure();
+    }
+
+    this.measurePoints.push(e.latlng);
+    this.measureLayer ??= L.layerGroup().addTo(this.map);
+    L.circleMarker(e.latlng, { radius: 4, color: '#0c4a6e', fillOpacity: 1 }).addTo(this.measureLayer);
+
+    if (this.measurePoints.length === 2) {
+      const [a, b] = this.measurePoints;
+      const nm = distanceNm(a.lat, a.lng, b.lat, b.lng);
+      L.polyline(this.measurePoints, { color: '#0c4a6e', dashArray: '6 4', weight: 2 }).addTo(this.measureLayer);
+      L.marker(b, {
+        icon: L.divIcon({
+          className: 'measure-label',
+          html: `<span>${nm.toFixed(1)} NM</span>`,
+          iconSize: [80, 20],
+          iconAnchor: [-6, 10],
+        }),
+      }).addTo(this.measureLayer);
+    }
+  }
+
+  private clearMeasure(): void {
+    this.measureLayer?.remove();
+    this.measureLayer = null;
+    this.measurePoints = [];
   }
 
   private vesselIcon(vessel: Vessel): L.DivIcon {

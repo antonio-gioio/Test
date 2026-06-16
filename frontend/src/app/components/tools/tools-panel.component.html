@@ -28,6 +28,15 @@
     <button mat-stroked-button class="full" (click)="findNearest()">
       <mat-icon>near_me</mat-icon> Nearest to centre
     </button>
+    <button
+      mat-stroked-button
+      class="full"
+      [color]="vesselService.measureMode() ? 'primary' : undefined"
+      (click)="vesselService.measureMode.set(!vesselService.measureMode())"
+    >
+      <mat-icon>straighten</mat-icon>
+      {{ vesselService.measureMode() ? 'Measuring — click two points' : 'Measure distance' }}
+    </button>
     @for (n of nearest(); track n.mmsi) {
       <div class="item">
         <button mat-button class="link" (click)="selectNearest(n)">

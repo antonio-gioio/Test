@@ -72,6 +72,9 @@ export class VesselService {
   /** The map's current visible bounds (for "watch this area" etc.). */
   readonly currentBounds = signal<Bounds | null>(null);
 
+  /** When on, clicking two points on the map measures the distance between them. */
+  readonly measureMode = signal(false);
+
   // ---- Historical playback ----
   readonly playbackActive = signal(false);
   readonly playbackPlaying = signal(false);

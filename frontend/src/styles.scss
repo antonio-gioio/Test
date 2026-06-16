@@ -219,6 +219,17 @@ app-account {
   border: none;
 }
 
+.measure-label span {
+  background: #0c4a6e;
+  color: #fff;
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
 .cluster-bubble {
   display: flex;
   align-items: center;
