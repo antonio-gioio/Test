@@ -1,14 +1,14 @@
 # AIS Vessel Tracker
 
-A live ship-tracking website with **pluggable AIS data providers**, a persistent spatial
-backend, and tiered user subscriptions. Switch data sources with one config setting — no
-code change — across a built-in simulator, two free feeds, and two paid feeds (each with a
-free trial).
+A live ship-tracking website with **admin-managed, pluggable AIS data providers**, a persistent
+spatial backend, and tiered user subscriptions. Run one or many data sources at once — a
+built-in simulator, two free feeds, and two paid feeds (each with a free trial) — added and
+toggled live from the admin dashboard, no redeploy.
 
-- **Backend** — C# / ASP.NET Core 8 (`backend/AisStream.Api`). Consumes the aisstream.io
-  WebSocket once, server-side, into a warm in-memory cache backed by **PostGIS**. Streams
+- **Backend** — C# / ASP.NET Core 8 (`backend/AisStream.Api`). Consumes the configured AIS
+  sources, server-side, into a warm in-memory cache backed by **PostGIS**. Streams
   viewport-scoped updates to browsers over SignalR. Includes accounts (ASP.NET Core Identity
-  + JWT) and subscription tiers.
+  + JWT with refresh tokens) and subscription tiers.
 - **Frontend** — Angular 19 (`frontend/`). Leaflet map that subscribes to its current
   viewport, a searchable vessel list, vessel detail + track trails, and login/plan management.
 
@@ -21,18 +21,18 @@ upstream feed:
 
 ```
                           ┌──────────────────────────────────────────────┐
-aisstream.io ──WebSocket──▶ AisStreamWorker → VesselStore (warm cache)    │
-  (one connection)         │        │                    │               │
-                           │        ▼                    ▼               │
-                           │  VesselBroadcaster    VesselPersistence      │
-                           │  (per-tile/cadence)   (write-behind)         │
-                           └────────│────────────────────│───────────────┘
-                                    │                     ▼
-                       SignalR  /hubs/vessels        PostGIS (GIST index)
-                       (viewport-scoped groups)      vessels + track history
-                                    │                     ▲
-                                    ▼                     │ REST /api/vessels?bounds (spatial)
-                              Angular + Leaflet ──────────┘      /api/vessels/{mmsi}/track
+ data sources ──────────▶ IngestionManager → runners → VesselStore (cache)│
+ (admin-managed, many)   │        │                    │                  │
+                         │        ▼                    ▼                  │
+                         │  VesselBroadcaster    VesselPersistence         │
+                         │  (per-tile/cadence)   (write-behind)            │
+                         └────────│────────────────────│──────────────────┘
+                                  │                     ▼
+                     SignalR  /hubs/vessels        PostGIS (GIST index)
+                     (viewport-scoped groups)      vessels + track history
+                                  │                     ▲
+                                  ▼                     │ REST /api/vessels?bounds (spatial)
+                            Angular + Leaflet ──────────┘      /api/vessels/{mmsi}/track
 ```
 
 The cache is always warm and persisted, so a new user gets an **instant snapshot** of their
