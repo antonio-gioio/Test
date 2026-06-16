@@ -32,6 +32,19 @@ mat-panel-title {
     padding: 0.1rem 0;
     color: #334155;
   }
+
+  .type-name {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    display: inline-block;
+  }
 }
 
 .muted {

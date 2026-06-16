@@ -97,3 +97,28 @@ export function navStatusLabel(status: number | null): string | null {
   }
   return NAV_STATUS[status] ?? `Status ${status}`;
 }
+
+/** A distinct colour per ship-type category, for map markers and the legend. */
+export function shipTypeColor(type: string | null): string {
+  switch (type) {
+    case 'Cargo':
+      return '#0a8a3f';
+    case 'Tanker':
+      return '#c2410c';
+    case 'Passenger':
+      return '#1d4ed8';
+    case 'Fishing':
+      return '#7c3aed';
+    case 'Tug':
+    case 'Pilot vessel':
+    case 'Port tender':
+      return '#0891b2';
+    case 'Sailing':
+    case 'Pleasure craft':
+      return '#0d9488';
+    case 'High speed craft':
+      return '#db2777';
+    default:
+      return '#475569';
+  }
+}

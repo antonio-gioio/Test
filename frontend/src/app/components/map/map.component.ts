@@ -8,7 +8,7 @@ import {
   viewChild,
 } from '@angular/core';
 import * as L from 'leaflet';
-import { Vessel } from '../../models/vessel';
+import { shipTypeColor, Vessel } from '../../models/vessel';
 import { VesselService } from '../../services/vessel.service';
 
 @Component({
@@ -258,12 +258,14 @@ export class MapComponent implements AfterViewInit, OnDestroy {
     const rotation = vessel.trueHeading ?? vessel.courseOverGround ?? 0;
     const moving = (vessel.speedOverGround ?? 0) > 0.5;
     const selected = this.vesselService.selectedMmsi() === vessel.mmsi;
-    const cssClass = `vessel-arrow${moving ? '' : ' stopped'}${selected ? ' selected' : ''}`;
+    // Colour by ship type (selected vessels stay red); stopped vessels are dimmed.
+    const color = selected ? '#dc2626' : shipTypeColor(vessel.shipType);
+    const style = `transform: rotate(${rotation}deg); color:${color}; opacity:${moving ? 1 : 0.55}`;
     return L.divIcon({
       className: 'vessel-icon',
       iconSize: [22, 22],
       iconAnchor: [11, 11],
-      html: `<div class="${cssClass}" style="transform: rotate(${rotation}deg)">▲</div>`,
+      html: `<div class="vessel-arrow" style="${style}">▲</div>`,
     });
   }
 

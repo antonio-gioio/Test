@@ -11,7 +11,12 @@
       </div>
       <ul class="types">
         @for (t of topTypes(); track t[0]) {
-          <li><span>{{ t[0] }}</span><span>{{ t[1] }}</span></li>
+          <li>
+            <span class="type-name">
+              <span class="swatch" [style.background]="shipTypeColor(t[0])"></span>{{ t[0] }}
+            </span>
+            <span>{{ t[1] }}</span>
+          </li>
         }
       </ul>
     } @else {

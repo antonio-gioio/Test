@@ -5,6 +5,7 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { shipTypeColor } from '../../models/vessel';
 import { AuthService } from '../../services/auth.service';
 import { NearestVessel, VesselService } from '../../services/vessel.service';
 import { WatchAreaService } from '../../services/watch-area.service';
@@ -30,6 +31,7 @@ export class ToolsPanelComponent implements OnInit, OnDestroy {
 
   protected readonly areaName = signal('');
   protected readonly nearest = signal<NearestVessel[]>([]);
+  protected readonly shipTypeColor = shipTypeColor;
   private statsTimer: ReturnType<typeof setInterval> | undefined;
 
   constructor() {

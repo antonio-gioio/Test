@@ -1,4 +1,4 @@
-import { navStatusLabel } from './vessel';
+import { navStatusLabel, shipTypeColor } from './vessel';
 
 describe('navStatusLabel', () => {
   it('maps known AIS navigational-status codes', () => {
@@ -13,5 +13,18 @@ describe('navStatusLabel', () => {
 
   it('returns null for missing status', () => {
     expect(navStatusLabel(null)).toBeNull();
+  });
+});
+
+describe('shipTypeColor', () => {
+  it('gives distinct colours to the main categories', () => {
+    const cargo = shipTypeColor('Cargo');
+    const tanker = shipTypeColor('Tanker');
+    expect(cargo).toMatch(/^#[0-9a-f]{6}$/i);
+    expect(cargo).not.toBe(tanker);
+  });
+
+  it('falls back to a neutral colour for unknown/null types', () => {
+    expect(shipTypeColor(null)).toBe(shipTypeColor('Something else'));
   });
 });
