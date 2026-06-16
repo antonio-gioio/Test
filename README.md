@@ -40,54 +40,45 @@ area instead of waiting minutes for the stream to fill in, and vessel names surv
 Clients subscribe to *the server* by map viewport; the server filters spatially (PostGIS GIST
 index) and fans out only the relevant tiles, at the refresh rate the user's plan allows.
 
-## AIS data providers
+## AIS data providers (admin-managed)
 
-Ingestion sits behind an `IAisProvider` interface, so the data source is swappable via
-`Ais:Provider` (env var `Ais__Provider`). All providers normalize into the same internal
-update model, so the rest of the system (storage, streaming, clustering) is unchanged.
+Ingestion sits behind an `IAisProvider` interface, and data sources are **configured at
+runtime from the admin dashboard** (Integrations tab) — stored in the database, not in config.
+You can run **multiple integrations at once**, each with its own provider, API key, bounding
+boxes, and MMSI filter, and enable/disable them live. The ingestion manager reconciles every
+~10s (start/restart/stop runners); adding a new provider is a single factory case.
 
 | Provider | Cost | Transport | Coverage | Notes |
 | --- | --- | --- | --- | --- |
-| `Simulator` | Free | — | Fake fleet | Default fallback; no account needed |
+| `Simulator` | Free | — | Fake fleet | Default seed; no account needed |
 | `AisStream` | **Free** | WebSocket | Terrestrial, global coastal | Key from [aisstream.io](https://aisstream.io) |
 | `Digitraffic` | **Free** | MQTT | Baltic / Finnish waters | Open data, no credentials ([Digitraffic](https://www.digitraffic.fi/en/marine-traffic/)) |
 | `MarineTraffic` | Paid · free trial | REST (polled) | Global (terrestrial + satellite) | Trial credits; key for the PS07 API |
 | `Datalastic` | Paid · free trial | REST (polled) | Global | [Free trial](https://datalastic.com) key |
 
-`Auto` (the default) uses AisStream if its API key is set, otherwise the Simulator. Select and
-configure a provider in `appsettings.json` under `Ais`, e.g.:
-
-```jsonc
-"Ais": {
-  "Provider": "MarineTraffic",
-  "MarineTraffic": { "ApiKey": "YOUR_TRIAL_KEY" }
-}
-```
-
-or via environment variables (handy for trials):
-
-```bash
-Ais__Provider=Datalastic  Ais__Datalastic__ApiKey=YOUR_TRIAL_KEY  dotnet run
-```
-
-`GET /api/status` reports the active provider. The two free feeds (AisStream, Digitraffic) and
-the simulator are verified; the paid providers are implemented to their documented REST shapes
-and need your trial key to exercise the live response.
+On first run a default integration is seeded (AisStream if a key is in config, otherwise the
+Simulator); after that, manage everything from **Admin → Integrations**. `GET /api/status`
+reports the active providers. The two free feeds and the simulator are verified; the paid
+providers are implemented to their documented REST shapes and need your trial key to exercise
+the live response.
 
 ## Features
 
 - **Live map** — Leaflet with heading-rotated vessel markers, viewport-scoped streaming, and
   server-side clustering at low zoom.
-- **Accounts & tiers** — registration/login (JWT), Free/Pro/Enterprise plans enforced
-  server-side. A seeded **admin** account unlocks the admin dashboard.
-- **Admin dashboard** — admins manage users (change tier, delete) and see system stats
-  (users by tier, watch areas, follows, DB/cache counts). Seeded on startup from config.
-- **Geofence watch areas** — save a map area; get a live SignalR alert (toast) when a vessel
-  enters it.
-- **Followed vessels** — follow ships and track their live positions in a side panel.
-- **Global search** — find any tracked vessel by name or MMSI, not just the viewport.
-- **Fleet statistics** — totals, moving/stopped, and a breakdown by ship type.
-- **Data export** — download a viewport as CSV or a vessel's track as GeoJSON.
+- **Accounts & tiers** — registration/login with JWT **access + refresh tokens** (auto-renew
+  on expiry, rotated, revocable); Free/Pro/Enterprise plans enforced server-side. Self-service
+  tier change is disabled in Production (set via admin or the billing webhook) — a Stripe-ready
+  `/api/billing/webhook` scaffold is included.
+- **Admin dashboard** (Material) — manage users (change tier, delete), configure data-source
+  **integrations**, view an **audit log** of admin actions, and system stats. Admin account
+  seeded on startup.
+- **Geofence watch areas** — save a map area; get a live SignalR alert (toast) on vessel entry.
+- **Followed vessels** — follow ships; they update **live even outside the viewport**.
+- **Historical playback** — scrub the last hour with a time slider to replay the fleet.
+- **Richer vessel data** — IMO, dimensions (L×W), draught, and ETA in the detail panel.
+- **Global search**, **fleet statistics**, and **data export** (viewport CSV, track GeoJSON).
+- **Design** — Angular Material components with a skeuomorphic, fluid glass/ocean theme.
 
 ### Admin account
 
@@ -167,18 +158,24 @@ npm start         # http://localhost:4200, proxies /api and /hubs to the backend
 
 | Endpoint | Description |
 | --- | --- |
-| `POST /api/auth/register` · `login` | Create account / sign in → JWT |
-| `GET /api/account/me` | Current account, tier limits, followed vessels |
-| `POST /api/account/tier` | Change tier, reissue token |
+| `POST /api/auth/register` · `login` | Create account / sign in → access + refresh token |
+| `POST /api/auth/refresh` · `logout` | Rotate access token / revoke refresh token |
+| `GET /api/account/me` | Current account, tier limits, admin flag, followed vessels |
+| `POST /api/account/tier` | Self-service tier change (non-Production) |
+| `GET/PUT/DELETE /api/account/followed[/{mmsi}]` | List / follow / unfollow vessels |
+| `POST /api/billing/webhook` | Set a user's tier (secret-protected; Stripe-ready scaffold) |
 | `GET /api/vessels?latMin&lonMin&latMax&lonMax` | Vessels in bounds (PostGIS, tier-gated) |
-| `GET /api/vessels/clusters?...&zoom=` | Grid-aggregated clusters for low-zoom/wide views (cached) |
-| `GET /api/vessels/search?q=` | Global search across all vessels by name or MMSI |
-| `GET /api/vessels/{mmsi}/track?hours=` | Track history (clamped to tier window) |
-| `GET /api/status` | Feed mode, vessel count, caller tier |
-| `GET /health` | Liveness + database health check |
-| `GET /metrics` | Prometheus metrics |
-| `GET /swagger` | Interactive OpenAPI documentation |
-| `/hubs/vessels` | SignalR. `SubscribeViewport(bounds)` → warm snapshot + per-tile deltas; `FollowVessel` / `UnfollowVessel` (auth) |
+| `GET /api/vessels/clusters?...&zoom=` | Grid-aggregated clusters for low-zoom views (cached) |
+| `GET /api/vessels/history?...&at=` | Fleet positions at a past time (playback) |
+| `GET /api/vessels/search?q=` | Global search by name or MMSI |
+| `GET /api/vessels/{mmsi}/track?hours=&format=` | Track history (JSON or GeoJSON) |
+| `GET /api/vessels/export?...` | Viewport as CSV |
+| `GET /api/vessels/stats` | Fleet totals + ship-type breakdown |
+| `GET/POST/PUT/DELETE /api/watch-areas[...]` | Geofence CRUD + `matches` |
+| `GET/POST/PUT/DELETE /api/admin/integrations[...]` | Manage data sources (admin) |
+| `GET /api/admin/users` · `stats` · `audit` | Admin dashboard data |
+| `GET /api/status` · `/health` · `/metrics` · `/swagger` | Status, health, metrics, OpenAPI |
+| `/hubs/vessels` | SignalR: `SubscribeViewport`; pushes `VesselsUpdated`, `FollowedUpdated`, `AreaAlert` |
 
 ## Clustering
 
@@ -231,6 +228,8 @@ the ingestor's feed, proving the cross-node Redis fan-out.
 - **RFC 7807 ProblemDetails** for unhandled errors — no stack traces leak to clients.
 - **Secrets guard**: the API refuses to start in Production with the default JWT key; set
   `Jwt__Key` (and a real `ConnectionStrings__Postgres`) via environment/secret store.
+- **Auth**: short-lived access tokens with rotating, revocable refresh tokens; self-service
+  tier changes disabled in Production; admin actions written to an **audit log**.
 - **CORS** origins are configurable via `Cors:AllowedOrigins`.
 - **Observability**: Prometheus metrics at `/metrics` (request duration/count/in-flight) plus
   structured logging.
@@ -241,7 +240,7 @@ the ingestor's feed, proving the cross-node Redis fan-out.
 
 ```bash
 cd backend
-dotnet test          # 31 tests: tier logic, tile math, vessel store, and HTTP integration
+dotnet test          # 60 tests: tier logic, tiles, vessel store, ingestion, and HTTP integration
 ```
 
 Integration tests run against PostGIS. Point them at a database with the `TEST_POSTGRES`
