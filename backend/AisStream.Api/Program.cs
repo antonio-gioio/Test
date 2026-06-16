@@ -121,7 +121,7 @@ builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
 builder.Services.AddHealthChecks()
-    .AddDbContextCheck<AppDbContext>("database");
+    .AddDbContextCheck<AppDbContext>("database", tags: ["ready"]);
 
 // Throttle auth endpoints to blunt credential-stuffing / brute force. The limit is read from
 // request services so test/host config overrides apply (eagerly-read config would not).
@@ -233,6 +233,15 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<VesselHub>("/hubs/vessels");
 app.MapHealthChecks("/health");
+// k8s-style probes: liveness has no dependencies; readiness checks the database.
+app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = _ => false,
+});
+app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready"),
+});
 app.MapMetrics(); // /metrics for Prometheus scraping
 
 app.Run();
