@@ -167,6 +167,7 @@ npm start         # http://localhost:4200, proxies /api and /hubs to the backend
 | `GET /api/vessels?latMin&lonMin&latMax&lonMax` | Vessels in bounds (PostGIS, tier-gated) |
 | `GET /api/vessels/clusters?...&zoom=` | Grid-aggregated clusters for low-zoom views (cached) |
 | `GET /api/vessels/history?...&at=` | Fleet positions at a past time (playback) |
+| `GET /api/vessels/nearest?lat&lon&limit` | Closest vessels (PostGIS KNN) with distance |
 | `GET /api/vessels/search?q=` | Global search by name or MMSI |
 | `GET /api/vessels/{mmsi}/track?hours=&format=` | Track history (JSON or GeoJSON) |
 | `GET /api/vessels/export?...` | Viewport as CSV |
@@ -223,7 +224,8 @@ the ingestor's feed, proving the cross-node Redis fan-out.
 
 ## Production notes
 
-- **Health checks** at `/health` (includes a database probe) for liveness/readiness.
+- **Health checks**: `/health` (full), `/health/live` (process), `/health/ready` (database) for
+  Kubernetes-style liveness/readiness probes.
 - **Rate limiting** on the auth endpoints (fixed window per IP) to blunt brute-force.
 - **RFC 7807 ProblemDetails** for unhandled errors — no stack traces leak to clients.
 - **Secrets guard**: the API refuses to start in Production with the default JWT key; set
