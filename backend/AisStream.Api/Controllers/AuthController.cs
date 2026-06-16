@@ -49,6 +49,10 @@ public class AuthController : ControllerBase
             return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
         }
 
+        var confirmToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+        await _email.SendAsync(user.Email!, "Confirm your AIS Tracker email",
+            $"Confirm your email with this token:\n\n{confirmToken}");
+
         return await IssueAsync(user);
     }
 
@@ -79,6 +83,24 @@ public class AuthController : ControllerBase
 
         existing.RevokedAt = DateTimeOffset.UtcNow; // rotate
         return await IssueAsync(existing.User);
+    }
+
+    public record ConfirmEmailRequest([Required, EmailAddress] string Email, [Required] string Token);
+
+    /// <summary>Confirms a user's email address using the token from the verification email.</summary>
+    [HttpPost("confirm-email")]
+    public async Task<IActionResult> ConfirmEmail(ConfirmEmailRequest request)
+    {
+        var user = await _userManager.FindByEmailAsync(request.Email);
+        if (user is null)
+        {
+            return BadRequest(new { error = "Invalid confirmation request." });
+        }
+
+        var result = await _userManager.ConfirmEmailAsync(user, request.Token);
+        return result.Succeeded
+            ? Ok(new { message = "Email confirmed." })
+            : BadRequest(new { errors = result.Errors.Select(e => e.Description) });
     }
 
     public record ForgotPasswordRequest([Required, EmailAddress] string Email);

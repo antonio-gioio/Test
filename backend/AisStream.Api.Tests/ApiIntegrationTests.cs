@@ -333,6 +333,32 @@ public class ApiIntegrationTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task Confirm_email_with_a_valid_token_marks_it_confirmed()
+    {
+        var client = _factory.CreateClient();
+        var email = NewEmail();
+        await client.PostAsJsonAsync("/api/auth/register", new { email, password = "Password123" });
+
+        string token;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var user = await users.FindByEmailAsync(email);
+            Assert.False(await users.IsEmailConfirmedAsync(user!)); // not confirmed at registration
+            token = await users.GenerateEmailConfirmationTokenAsync(user!);
+        }
+
+        var confirm = await client.PostAsJsonAsync("/api/auth/confirm-email", new { email, token });
+        Assert.Equal(HttpStatusCode.OK, confirm.StatusCode);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            Assert.True(await users.IsEmailConfirmedAsync((await users.FindByEmailAsync(email))!));
+        }
+    }
+
+    [Fact]
     public async Task Forgot_password_always_returns_ok()
     {
         var client = _factory.CreateClient();
