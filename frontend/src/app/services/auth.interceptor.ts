@@ -27,6 +27,11 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         return throwError(() => err);
       }
 
+      if (err instanceof HttpErrorResponse && err.status >= 500) {
+        snackBar.open('Something went wrong on the server. Please try again.', 'OK', { duration: 5000 });
+        return throwError(() => err);
+      }
+
       const canRefresh =
         err instanceof HttpErrorResponse &&
         err.status === 401 &&

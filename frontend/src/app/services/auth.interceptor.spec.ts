@@ -1,20 +1,24 @@
 import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { authInterceptor } from './auth.interceptor';
 
 describe('authInterceptor', () => {
   let http: HttpClient;
   let ctrl: HttpTestingController;
+  const snackBar = { open: jest.fn() };
 
   beforeEach(() => {
     localStorage.clear();
+    snackBar.open.mockClear();
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(withInterceptors([authInterceptor])),
         provideHttpClientTesting(),
         provideNoopAnimations(),
+        { provide: MatSnackBar, useValue: snackBar },
       ],
     });
     http = TestBed.inject(HttpClient);
@@ -32,6 +36,12 @@ describe('authInterceptor', () => {
     const req = ctrl.expectOne('/api/vessels/stats');
     expect(req.request.headers.get('Authorization')).toBe('Bearer tok');
     req.flush({});
+  });
+
+  it('shows a snackbar on a 5xx server error', () => {
+    http.get('/api/vessels/stats').subscribe({ error: () => undefined });
+    ctrl.expectOne('/api/vessels/stats').flush(null, { status: 500, statusText: 'Server Error' });
+    expect(snackBar.open).toHaveBeenCalled();
   });
 
   it('refreshes the token on 401 and retries the original request', () => {
