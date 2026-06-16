@@ -6,6 +6,7 @@ import { AccountComponent } from './components/account/account.component';
 import { AdminPanelComponent } from './components/admin/admin-panel.component';
 import { AlertToastsComponent } from './components/alerts/alert-toasts.component';
 import { MapComponent } from './components/map/map.component';
+import { PlaybackComponent } from './components/playback/playback.component';
 import { SidebarComponent } from './components/sidebar/sidebar.component';
 import { ToolsPanelComponent } from './components/tools/tools-panel.component';
 import { AuthService } from './services/auth.service';
@@ -20,6 +21,7 @@ import { VesselService } from './services/vessel.service';
     ToolsPanelComponent,
     AlertToastsComponent,
     AdminPanelComponent,
+    PlaybackComponent,
     MatToolbarModule,
     MatButtonModule,
     MatIconModule,

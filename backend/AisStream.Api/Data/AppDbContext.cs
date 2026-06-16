@@ -37,6 +37,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             entity.HasKey(t => t.Id);
             entity.Property(t => t.Location).HasColumnType("geometry (Point, 4326)");
             entity.HasIndex(t => new { t.Mmsi, t.Timestamp });
+            // GIST index for the historical-playback envelope query.
+            entity.HasIndex(t => t.Location).HasMethod("gist");
         });
 
         builder.Entity<FollowedVessel>(entity =>

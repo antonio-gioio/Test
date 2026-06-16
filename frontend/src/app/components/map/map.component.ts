@@ -37,13 +37,23 @@ export class MapComponent implements AfterViewInit, OnDestroy {
   private readonly markers = new Map<number, L.Marker>();
   private trackLine: L.Polyline | null = null;
   private clusterLayer: L.LayerGroup | null = null;
+  private historyLayer: L.LayerGroup | null = null;
   private clusterMode = false;
 
   constructor() {
     effect(() => {
       const batch = this.vesselService.lastBatch();
-      if (this.map && !this.clusterMode) {
+      if (this.map && !this.clusterMode && !this.vesselService.playbackActive()) {
         this.syncMarkers(batch);
+      }
+    });
+
+    // Historical playback overlay: render the snapshot at the scrubbed time; hide live markers.
+    effect(() => {
+      const active = this.vesselService.playbackActive();
+      const vessels = this.vesselService.playbackVessels();
+      if (this.map) {
+        this.renderHistory(active, vessels);
       }
     });
 
@@ -142,6 +152,43 @@ export class MapComponent implements AfterViewInit, OnDestroy {
     this.clusterMode = false;
     this.clusterLayer?.remove();
     this.clusterLayer = null;
+  }
+
+  private renderHistory(active: boolean, vessels: Vessel[]): void {
+    if (!this.map) {
+      return;
+    }
+    this.historyLayer?.remove();
+    this.historyLayer = null;
+
+    if (!active) {
+      // Restore live markers when leaving playback.
+      if (!this.clusterMode) {
+        this.syncMarkers(this.vesselService.vessels());
+      }
+      return;
+    }
+
+    // Hide live markers while scrubbing history.
+    for (const marker of this.markers.values()) {
+      marker.remove();
+    }
+    this.markers.clear();
+
+    this.historyLayer = L.layerGroup();
+    for (const vessel of vessels) {
+      const rotation = vessel.trueHeading ?? vessel.courseOverGround ?? 0;
+      const icon = L.divIcon({
+        className: 'vessel-icon',
+        iconSize: [22, 22],
+        iconAnchor: [11, 11],
+        html: `<div class="vessel-arrow history" style="transform: rotate(${rotation}deg)">▲</div>`,
+      });
+      L.marker([vessel.latitude, vessel.longitude], { icon })
+        .bindPopup(this.popupHtml(vessel))
+        .addTo(this.historyLayer);
+    }
+    this.historyLayer.addTo(this.map);
   }
 
   private clusterIcon(count: number): L.DivIcon {

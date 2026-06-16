@@ -250,6 +250,78 @@ public class VesselsController : ControllerBase
         command.Parameters.Add(p);
     }
 
+    /// <summary>
+    /// Historical fleet snapshot: each vessel's most recent position at or before <paramref name="at"/>
+    /// within the bounds (for time-scrubbing / playback). Clamped to the caller's tier history
+    /// window and viewport-area limit; backed by the PostGIS GIST index on track points.
+    /// </summary>
+    [HttpGet("history")]
+    public async Task<ActionResult<object>> GetHistory(
+        [FromQuery] double latMin,
+        [FromQuery] double lonMin,
+        [FromQuery] double latMax,
+        [FromQuery] double lonMax,
+        [FromQuery] DateTimeOffset at)
+    {
+        var bounds = new Bounds(latMin, lonMin, latMax, lonMax);
+        var limits = TierLimits.For(TokenService.TierOf(User));
+        if (bounds.AreaSqDegrees > limits.MaxViewportAreaSqDegrees)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { error = "Requested area exceeds your plan limit." });
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var earliest = now - limits.MaxTrackHistory;
+        if (at > now) at = now;
+        if (at < earliest) at = earliest;
+
+        const string sql = """
+            SELECT DISTINCT ON (t."Mmsi")
+                   t."Mmsi" AS mmsi,
+                   ST_Y(t."Location") AS lat,
+                   ST_X(t."Location") AS lon,
+                   t."SpeedOverGround" AS sog,
+                   t."CourseOverGround" AS cog,
+                   v."Name" AS name,
+                   v."ShipType" AS shiptype
+            FROM "TrackPoints" t
+            LEFT JOIN "Vessels" v ON v."Mmsi" = t."Mmsi"
+            WHERE t."Timestamp" <= @at AND t."Timestamp" >= @earliest
+              AND t."Location" && ST_MakeEnvelope(@lonMin, @latMin, @lonMax, @latMax, 4326)
+            ORDER BY t."Mmsi", t."Timestamp" DESC
+            """;
+
+        await using var command = _db.Database.GetDbConnection().CreateCommand();
+        command.CommandText = sql;
+        AddParam(command, "at", at);
+        AddParam(command, "earliest", earliest);
+        AddParam(command, "lonMin", bounds.LonMin);
+        AddParam(command, "latMin", bounds.LatMin);
+        AddParam(command, "lonMax", bounds.LonMax);
+        AddParam(command, "latMax", bounds.LatMax);
+
+        await _db.Database.OpenConnectionAsync();
+        var vessels = new List<object>();
+        await using (var reader = await command.ExecuteReaderAsync())
+        {
+            while (await reader.ReadAsync())
+            {
+                vessels.Add(new
+                {
+                    mmsi = reader.GetInt64(0),
+                    latitude = reader.GetDouble(1),
+                    longitude = reader.GetDouble(2),
+                    speedOverGround = reader.IsDBNull(3) ? (double?)null : reader.GetDouble(3),
+                    courseOverGround = reader.IsDBNull(4) ? (double?)null : reader.GetDouble(4),
+                    name = reader.IsDBNull(5) ? null : reader.GetString(5),
+                    shipType = reader.IsDBNull(6) ? null : reader.GetString(6),
+                });
+            }
+        }
+
+        return Ok(new { at, count = vessels.Count, vessels });
+    }
+
     /// <summary>Grid cell size in degrees for a Leaflet zoom level (~64px clusters).</summary>
     private static double ClusterCellDegrees(int zoom)
     {

@@ -62,6 +62,19 @@ export class VesselService {
   /** The map's current visible bounds (for "watch this area" etc.). */
   readonly currentBounds = signal<Bounds | null>(null);
 
+  // ---- Historical playback ----
+  readonly playbackActive = signal(false);
+  readonly playbackPlaying = signal(false);
+  readonly playbackAt = signal<number>(Date.now()); // epoch ms
+  readonly playbackVessels = signal<Vessel[]>([]);
+  private playbackTimer: ReturnType<typeof setInterval> | undefined;
+  private static readonly PlaybackStepMs = 60_000; // 60s of history per tick
+  private static readonly PlaybackWindowMs = 60 * 60 * 1000; // scrub the last hour
+
+  get playbackWindowMs(): number {
+    return VesselService.PlaybackWindowMs;
+  }
+
   constructor() {
     // Reconnect whenever the auth token changes so the hub sees the new tier.
     effect(() => {
@@ -157,6 +170,56 @@ export class VesselService {
 
   dismissAlert(index: number): void {
     this.alerts.update((list) => list.filter((_, i) => i !== index));
+  }
+
+  startPlayback(): void {
+    this.playbackActive.set(true);
+    this.seek(Date.now() - VesselService.PlaybackWindowMs);
+  }
+
+  stopPlayback(): void {
+    this.pausePlayback();
+    this.playbackActive.set(false);
+    this.playbackVessels.set([]);
+  }
+
+  togglePlayback(): void {
+    this.playbackPlaying() ? this.pausePlayback() : this.playPlayback();
+  }
+
+  seek(atMs: number): void {
+    this.playbackAt.set(atMs);
+    this.loadHistory(atMs);
+  }
+
+  private playPlayback(): void {
+    this.playbackPlaying.set(true);
+    this.playbackTimer = setInterval(() => {
+      let next = this.playbackAt() + VesselService.PlaybackStepMs;
+      if (next >= Date.now()) {
+        next = Date.now();
+        this.pausePlayback();
+      }
+      this.seek(next);
+    }, 700);
+  }
+
+  private pausePlayback(): void {
+    this.playbackPlaying.set(false);
+    clearInterval(this.playbackTimer);
+  }
+
+  private loadHistory(atMs: number): void {
+    const b = this.currentBounds();
+    if (!b) {
+      return;
+    }
+    const at = new Date(atMs).toISOString();
+    const q = `latMin=${b.latMin}&lonMin=${b.lonMin}&latMax=${b.latMax}&lonMax=${b.lonMax}&at=${at}`;
+    this.http.get<{ vessels: Vessel[] }>(`/api/vessels/history?${q}`).subscribe({
+      next: (res) => this.playbackVessels.set(res.vessels ?? []),
+      error: () => this.playbackVessels.set([]),
+    });
   }
 
   /** Downloads the current viewport as CSV (auth header attached by the interceptor). */
