@@ -241,6 +241,25 @@ public class ApiIntegrationTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task Tier_rate_limit_returns_429_when_exceeded()
+    {
+        // Fresh host with a tiny Free-tier limit so the throttle is observable.
+        var factory = _factory.WithWebHostBuilder(b => b.ConfigureAppConfiguration((_, c) =>
+            c.AddInMemoryCollection(new Dictionary<string, string?> { ["RateLimit:TierApiFree"] = "3" })));
+        var client = factory.CreateClient();
+
+        var codes = new List<int>();
+        for (var i = 0; i < 6; i++)
+        {
+            var res = await client.GetAsync("/api/vessels/nearest?lat=50&lon=-1&limit=1");
+            codes.Add((int)res.StatusCode);
+        }
+
+        Assert.Contains(200, codes);
+        Assert.Contains(429, codes);
+    }
+
+    [Fact]
     public async Task Nearest_endpoint_returns_a_list()
     {
         var client = _factory.CreateClient();
