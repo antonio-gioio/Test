@@ -1,11 +1,9 @@
 <div class="sidebar">
-  <input
-    class="search"
-    type="search"
-    placeholder="Search all vessels by name or MMSI…"
-    [ngModel]="search()"
-    (ngModelChange)="onSearchChange($event)"
-  />
+  <mat-form-field appearance="outline" class="search">
+    <mat-icon matPrefix>search</mat-icon>
+    <mat-label>Search all vessels</mat-label>
+    <input matInput [ngModel]="search()" (ngModelChange)="onSearchChange($event)" />
+  </mat-form-field>
 
   @if (globalResults().length) {
     <ul class="global-results">
@@ -57,13 +55,17 @@
       <div class="actions">
         @if (auth.isLoggedIn()) {
           @if (isFollowed(vessel.mmsi)) {
-            <button class="action" (click)="vesselService.unfollow(vessel.mmsi)">★ Following</button>
+            <button mat-flat-button color="primary" (click)="vesselService.unfollow(vessel.mmsi)">
+              <mat-icon>star</mat-icon> Following
+            </button>
           } @else {
-            <button class="action" (click)="vesselService.follow(vessel.mmsi)">☆ Follow</button>
+            <button mat-stroked-button (click)="vesselService.follow(vessel.mmsi)">
+              <mat-icon>star_border</mat-icon> Follow
+            </button>
           }
         }
-        <button class="action" (click)="vesselService.exportTrackGeoJson(vessel.mmsi)">
-          ⬇ Track (GeoJSON)
+        <button mat-stroked-button (click)="vesselService.exportTrackGeoJson(vessel.mmsi)">
+          <mat-icon>download</mat-icon> Track
         </button>
       </div>
     </section>

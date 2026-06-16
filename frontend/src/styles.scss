@@ -19,13 +19,166 @@ html {
   box-sizing: border-box;
 }
 
+:root {
+  --ocean-deep: #06243b;
+  --ocean: #0c4a6e;
+  --ocean-light: #1c7fb8;
+  --teal: #18b6c9;
+  --glass: rgba(255, 255, 255, 0.62);
+  --glass-strong: rgba(255, 255, 255, 0.78);
+  --glass-border: rgba(255, 255, 255, 0.7);
+  --glass-shadow: 0 8px 30px rgba(8, 35, 58, 0.28);
+  --inset-top: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
 html,
 body {
   margin: 0;
   height: 100%;
   font-family: Roboto, 'Segoe UI', system-ui, -apple-system, sans-serif;
-  color: #0f172a;
-  background: #eef2f6;
+  color: #0f2333;
+}
+
+/* Fluid, animated deep-ocean backdrop. */
+body {
+  background:
+    radial-gradient(1200px 800px at 15% -10%, rgba(36, 150, 200, 0.55), transparent 60%),
+    radial-gradient(1000px 700px at 110% 20%, rgba(24, 182, 201, 0.4), transparent 55%),
+    linear-gradient(160deg, #0a3553 0%, #06243b 45%, #051a2d 100%);
+  background-attachment: fixed;
+  background-size: 200% 200%, 200% 200%, 100% 100%;
+  animation: ocean-drift 28s ease-in-out infinite alternate;
+}
+
+@keyframes ocean-drift {
+  0% {
+    background-position:
+      0% 0%,
+      100% 0%,
+      0 0;
+  }
+  100% {
+    background-position:
+      30% 20%,
+      70% 30%,
+      0 0;
+  }
+}
+
+/* Reduced motion: hold still. */
+@media (prefers-reduced-motion: reduce) {
+  body {
+    animation: none;
+  }
+}
+
+/* ---- Skeuomorphic + fluid surface system (re-skins Angular Material) ---- */
+
+* {
+  transition:
+    box-shadow 0.25s ease,
+    transform 0.18s ease,
+    background-color 0.25s ease,
+    border-color 0.25s ease;
+}
+
+/* Toolbar: brushed deep-sea bar with depth + foam highlight. */
+.mat-toolbar.topbar {
+  background: linear-gradient(180deg, #0e4f76 0%, #0a3a59 60%, #082f49 100%) !important;
+  color: #eaf6ff !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 6px 18px rgba(3, 18, 30, 0.45),
+    var(--inset-top);
+}
+
+/* Frosted-glass panels. */
+.layout aside,
+.mat-mdc-card,
+.mat-expansion-panel,
+app-account,
+.tools-glass {
+  backdrop-filter: blur(14px) saturate(135%);
+  -webkit-backdrop-filter: blur(14px) saturate(135%);
+}
+
+.layout aside {
+  background: var(--glass) !important;
+  border-right: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+app-account {
+  display: block;
+  background: linear-gradient(180deg, var(--glass-strong), var(--glass)) !important;
+  border-bottom: 1px solid var(--glass-border) !important;
+}
+
+/* Expansion panels as raised glass tiles. */
+.mat-expansion-panel {
+  background: var(--glass-strong) !important;
+  border: 1px solid var(--glass-border);
+  border-radius: 14px !important;
+  margin: 0.5rem 0.6rem !important;
+  box-shadow:
+    0 6px 16px rgba(8, 35, 58, 0.18),
+    var(--inset-top) !important;
+  overflow: hidden;
+}
+
+/* Skeuomorphic, pressable buttons. */
+.mat-mdc-unelevated-button.mat-primary,
+.mat-mdc-raised-button.mat-primary {
+  background: linear-gradient(180deg, #2aa9d6 0%, #1c7fb8 55%, #166aa0 100%) !important;
+  color: #fff !important;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow:
+    0 4px 10px rgba(13, 90, 140, 0.45),
+    var(--inset-top) !important;
+}
+
+.mat-mdc-outlined-button {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.55)) !important;
+  border: 1px solid rgba(13, 90, 140, 0.35) !important;
+  box-shadow:
+    0 2px 6px rgba(8, 35, 58, 0.12),
+    var(--inset-top) !important;
+}
+
+.mat-mdc-button,
+.mat-mdc-outlined-button,
+.mat-mdc-unelevated-button,
+.mat-mdc-raised-button {
+  border-radius: 12px !important;
+
+  &:hover {
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(1px);
+    box-shadow:
+      inset 0 2px 5px rgba(8, 35, 58, 0.35),
+      0 1px 2px rgba(8, 35, 58, 0.2) !important;
+  }
+}
+
+/* Glass form fields. */
+.mat-mdc-form-field {
+  width: 100%;
+}
+
+.mat-mdc-text-field-wrapper {
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.55) !important;
+}
+
+/* Viewport banner / alert toasts get glassy depth. */
+.viewport-banner {
+  backdrop-filter: blur(8px);
+  background: linear-gradient(180deg, rgba(217, 119, 6, 0.95), rgba(180, 83, 9, 0.95)) !important;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: var(--glass-shadow) !important;
 }
 
 /* Vessel markers rendered by Leaflet divIcons (outside Angular component styles). */

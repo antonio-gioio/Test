@@ -1,6 +1,10 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { navStatusLabel, Vessel } from '../../models/vessel';
 import { AuthService } from '../../services/auth.service';
 import { VesselService } from '../../services/vessel.service';
@@ -8,7 +12,15 @@ import { VesselService } from '../../services/vessel.service';
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  imports: [FormsModule, DatePipe, DecimalPipe],
+  imports: [
+    FormsModule,
+    DatePipe,
+    DecimalPipe,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule,
+    MatIconModule,
+  ],
   templateUrl: './sidebar.component.html',
   styleUrl: './sidebar.component.scss',
 })
