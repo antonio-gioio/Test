@@ -47,6 +47,8 @@ public class VesselBusConsumer : BackgroundService
         _bus.Subscribe(vessel =>
         {
             _store.Apply(vessel);
+            AppMetrics.BusUpdates.Inc();
+            AppMetrics.CachedVessels.Set(_store.Count);
             if (realtime)
             {
                 _broadcaster.Enqueue(vessel);
