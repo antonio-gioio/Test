@@ -90,6 +90,48 @@ public class ApiIntegrationTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task Admin_can_crud_integrations()
+    {
+        var client = _factory.CreateClient();
+        var token = await AdminTokenAsync(client);
+
+        var types = await client.SendAsync(Get("/api/admin/provider-types", token));
+        Assert.Equal(HttpStatusCode.OK, types.StatusCode);
+
+        var name = $"itest-{Guid.NewGuid():N}";
+        var create = await client.SendAsync(Authed(HttpMethod.Post, "/api/admin/integrations", token,
+            JsonContent.Create(new
+            {
+                name,
+                provider = "Simulator",
+                enabled = false,
+                apiKey = (string?)null,
+                url = (string?)null,
+                boundingBoxesJson = (string?)null,
+                mmsiFilterJson = (string?)null,
+                pollSeconds = 60,
+                centerLat = 50.0,
+                centerLon = -1.0,
+                radiusKm = 100.0,
+            })));
+        Assert.Equal(HttpStatusCode.OK, create.StatusCode);
+        var created = await create.Content.ReadFromJsonAsync<JsonElement>();
+        var id = created.GetProperty("id").GetInt32();
+        Assert.Equal("Simulator", created.GetProperty("provider").GetString());
+
+        var list = await client.SendAsync(Get("/api/admin/integrations", token));
+        var items = await list.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Contains(items.EnumerateArray(), i => i.GetProperty("id").GetInt32() == id);
+
+        var enable = await client.SendAsync(
+            Authed(HttpMethod.Post, $"/api/admin/integrations/{id}/enabled?value=true", token));
+        Assert.Equal(HttpStatusCode.NoContent, enable.StatusCode);
+
+        var delete = await client.SendAsync(Authed(HttpMethod.Delete, $"/api/admin/integrations/{id}", token));
+        Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
+    }
+
+    [Fact]
     public async Task Admin_actions_are_audit_logged()
     {
         var client = _factory.CreateClient();
