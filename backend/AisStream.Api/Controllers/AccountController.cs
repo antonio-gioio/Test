@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace AisStream.Api.Controllers;
 
@@ -20,17 +21,22 @@ public class AccountController : ControllerBase
     private readonly AppDbContext _db;
     private readonly TokenService _tokenService;
     private readonly VesselStore _store;
+    private readonly bool _selfServiceTier;
 
     public AccountController(
         UserManager<ApplicationUser> userManager,
         AppDbContext db,
         TokenService tokenService,
-        VesselStore store)
+        VesselStore store,
+        IOptions<BillingOptions> billing,
+        IWebHostEnvironment env)
     {
         _userManager = userManager;
         _db = db;
         _tokenService = tokenService;
         _store = store;
+        // Self-service tier is allowed when explicitly enabled, or (by default) outside Production.
+        _selfServiceTier = billing.Value.AllowSelfServiceTier ?? !env.IsProduction();
     }
 
     public record AccountResponse(
@@ -53,13 +59,20 @@ public class AccountController : ControllerBase
     }
 
     /// <summary>
-    /// Changes the caller's subscription tier and returns a fresh token carrying the new
-    /// tier claim. In a real product this would be driven by a billing webhook, not the
-    /// client; it is exposed here so the tiers can be exercised end-to-end.
+    /// Self-service tier change for demos/testing. Disabled in Production (where the tier is
+    /// set by an admin or the billing webhook), so users cannot grant themselves a paid plan.
     /// </summary>
     [HttpPost("tier")]
     public async Task<ActionResult<TokenResponse>> ChangeTier(ChangeTierRequest request)
     {
+        if (!_selfServiceTier)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                error = "Self-service tier changes are disabled. Upgrade through billing.",
+            });
+        }
+
         var user = await CurrentUserAsync();
         if (user is null)
         {

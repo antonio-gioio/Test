@@ -87,6 +87,15 @@ public class ApiIntegrationTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task Billing_webhook_is_inert_until_configured()
+    {
+        var client = _factory.CreateClient();
+        var res = await client.PostAsJsonAsync("/api/billing/webhook",
+            new { email = "x@y.com", tier = 2 });
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, res.StatusCode);
+    }
+
+    [Fact]
     public async Task Vessel_stats_endpoint_returns_breakdown()
     {
         var client = _factory.CreateClient();
