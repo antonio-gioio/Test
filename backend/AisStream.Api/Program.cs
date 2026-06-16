@@ -102,7 +102,16 @@ builder.Services
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<AuditService>();
-builder.Services.AddSingleton<IEmailSender, LoggingEmailSender>();
+builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.SectionName));
+var emailConfigured = !string.IsNullOrWhiteSpace(builder.Configuration[$"{EmailOptions.SectionName}:Host"]);
+if (emailConfigured)
+{
+    builder.Services.AddSingleton<IEmailSender, SmtpEmailSender>();
+}
+else
+{
+    builder.Services.AddSingleton<IEmailSender, LoggingEmailSender>();
+}
 
 builder.Services
     .AddControllers()

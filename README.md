@@ -234,6 +234,8 @@ the ingestor's feed, proving the cross-node Redis fan-out.
   `Jwt__Key` (and a real `ConnectionStrings__Postgres`) via environment/secret store.
 - **Auth**: short-lived access tokens with rotating, revocable refresh tokens; self-service
   tier changes disabled in Production; admin actions written to an **audit log**.
+- **Email**: password reset + email verification via a pluggable sender — logs by default,
+  delivers over SMTP when `Email:Host` is configured.
 - **CORS** origins are configurable via `Cors:AllowedOrigins`.
 - **Observability**: Prometheus metrics at `/metrics` (request duration/count/in-flight) plus
   structured logging.
