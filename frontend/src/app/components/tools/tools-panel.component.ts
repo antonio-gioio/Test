@@ -6,7 +6,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { AuthService } from '../../services/auth.service';
-import { VesselService } from '../../services/vessel.service';
+import { NearestVessel, VesselService } from '../../services/vessel.service';
 import { WatchAreaService } from '../../services/watch-area.service';
 
 @Component({
@@ -29,6 +29,7 @@ export class ToolsPanelComponent implements OnInit, OnDestroy {
   protected readonly auth = inject(AuthService);
 
   protected readonly areaName = signal('');
+  protected readonly nearest = signal<NearestVessel[]>([]);
   private statsTimer: ReturnType<typeof setInterval> | undefined;
 
   constructor() {
@@ -77,6 +78,42 @@ export class ToolsPanelComponent implements OnInit, OnDestroy {
     if (bounds) {
       this.vesselService.exportViewportCsv(bounds);
     }
+  }
+
+  protected findNearest(): void {
+    const b = this.vesselService.currentBounds();
+    if (!b) {
+      return;
+    }
+    const lat = (b.latMin + b.latMax) / 2;
+    const lon = (b.lonMin + b.lonMax) / 2;
+    this.vesselService.getNearest(lat, lon, 8).subscribe((r) => this.nearest.set(r));
+  }
+
+  protected selectNearest(n: NearestVessel): void {
+    this.vesselService.selectFromSearch({
+      mmsi: n.mmsi,
+      name: n.name,
+      latitude: n.latitude,
+      longitude: n.longitude,
+      shipType: n.shipType,
+      speedOverGround: null,
+      courseOverGround: null,
+      trueHeading: null,
+      navigationalStatus: null,
+      destination: null,
+      callSign: null,
+      imo: null,
+      length: null,
+      width: null,
+      draught: null,
+      eta: null,
+      lastUpdate: new Date().toISOString(),
+    });
+  }
+
+  protected km(meters: number): string {
+    return meters >= 1000 ? `${(meters / 1000).toFixed(1)} km` : `${Math.round(meters)} m`;
   }
 
   protected select(mmsi: number): void {

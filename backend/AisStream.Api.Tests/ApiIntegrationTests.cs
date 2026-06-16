@@ -133,6 +133,16 @@ public class ApiIntegrationTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task Nearest_endpoint_returns_a_list()
+    {
+        var client = _factory.CreateClient();
+        var res = await client.GetAsync("/api/vessels/nearest?lat=50.5&lon=-1&limit=5");
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        var body = await res.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(JsonValueKind.Array, body.ValueKind);
+    }
+
+    [Fact]
     public async Task Vessel_stats_endpoint_returns_breakdown()
     {
         var client = _factory.CreateClient();

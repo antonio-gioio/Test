@@ -27,6 +27,15 @@ interface ViewportResult {
   vessels: Vessel[];
 }
 
+export interface NearestVessel {
+  mmsi: number;
+  name: string | null;
+  latitude: number;
+  longitude: number;
+  shipType: string | null;
+  distanceMeters: number;
+}
+
 /**
  * Live vessel state for the app. Connects to the SignalR hub (with the auth token when
  * present), subscribes to the current map viewport, and applies the warm snapshot plus
@@ -112,6 +121,11 @@ export class VesselService {
   /** Global server-side search across all tracked vessels (not just the viewport). */
   searchGlobal(q: string): Observable<Vessel[]> {
     return this.http.get<Vessel[]>(`/api/vessels/search?q=${encodeURIComponent(q)}`);
+  }
+
+  /** Nearest vessels to a point (PostGIS KNN), with distance in metres. */
+  getNearest(lat: number, lon: number, limit = 10): Observable<NearestVessel[]> {
+    return this.http.get<NearestVessel[]>(`/api/vessels/nearest?lat=${lat}&lon=${lon}&limit=${limit}`);
   }
 
   /** Selects a vessel found via global search, adding it to the working set so the map can show it. */

@@ -20,6 +20,17 @@
     <button mat-stroked-button class="full" (click)="exportView()">
       <mat-icon>download</mat-icon> Export view (CSV)
     </button>
+    <button mat-stroked-button class="full" (click)="findNearest()">
+      <mat-icon>near_me</mat-icon> Nearest to centre
+    </button>
+    @for (n of nearest(); track n.mmsi) {
+      <div class="item">
+        <button mat-button class="link" (click)="selectNearest(n)">
+          {{ n.name || 'MMSI ' + n.mmsi }}
+        </button>
+        <span class="muted">{{ km(n.distanceMeters) }}</span>
+      </div>
+    }
   </mat-expansion-panel>
 
   @if (auth.isLoggedIn()) {

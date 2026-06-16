@@ -251,6 +251,60 @@ public class VesselsController : ControllerBase
     }
 
     /// <summary>
+    /// The vessels nearest to a point (PostGIS KNN), with great-circle distance in metres.
+    /// Useful for "what's around here". Capped at 50 results.
+    /// </summary>
+    [HttpGet("nearest")]
+    public async Task<ActionResult<object>> GetNearest(
+        [FromQuery] double lat,
+        [FromQuery] double lon,
+        [FromQuery] int limit = 10)
+    {
+        limit = Math.Clamp(limit, 1, 50);
+        var cutoff = DateTimeOffset.UtcNow - TimeSpan.FromMinutes(_options.VesselTtlMinutes);
+
+        const string sql = """
+            SELECT "Mmsi" AS mmsi,
+                   "Name" AS name,
+                   ST_Y("Location") AS lat,
+                   ST_X("Location") AS lon,
+                   "ShipType" AS shiptype,
+                   ST_DistanceSphere("Location", ST_SetSRID(ST_MakePoint(@lon, @lat), 4326)) AS dist
+            FROM "Vessels"
+            WHERE "LastUpdate" >= @cutoff
+            ORDER BY "Location" <-> ST_SetSRID(ST_MakePoint(@lon, @lat), 4326)
+            LIMIT @limit
+            """;
+
+        await using var command = _db.Database.GetDbConnection().CreateCommand();
+        command.CommandText = sql;
+        AddParam(command, "lon", lon);
+        AddParam(command, "lat", lat);
+        AddParam(command, "cutoff", cutoff);
+        AddParam(command, "limit", limit);
+
+        await _db.Database.OpenConnectionAsync();
+        var vessels = new List<object>();
+        await using (var reader = await command.ExecuteReaderAsync())
+        {
+            while (await reader.ReadAsync())
+            {
+                vessels.Add(new
+                {
+                    mmsi = reader.GetInt64(0),
+                    name = reader.IsDBNull(1) ? null : reader.GetString(1),
+                    latitude = reader.GetDouble(2),
+                    longitude = reader.GetDouble(3),
+                    shipType = reader.IsDBNull(4) ? null : reader.GetString(4),
+                    distanceMeters = reader.IsDBNull(5) ? 0 : Math.Round(reader.GetDouble(5)),
+                });
+            }
+        }
+
+        return Ok(vessels);
+    }
+
+    /// <summary>
     /// Historical fleet snapshot: each vessel's most recent position at or before <paramref name="at"/>
     /// within the bounds (for time-scrubbing / playback). Clamped to the caller's tier history
     /// window and viewport-area limit; backed by the PostGIS GIST index on track points.
