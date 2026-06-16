@@ -38,6 +38,8 @@ public class VesselHub : Hub
 
     public override async Task OnConnectedAsync()
     {
+        Services.AppMetrics.SignalRConnections.Inc();
+
         // Authenticated connections join a per-user group so geofence alerts can be targeted.
         var userId = Context.User?.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!string.IsNullOrEmpty(userId))
@@ -132,6 +134,7 @@ public class VesselHub : Hub
 
     public override Task OnDisconnectedAsync(Exception? exception)
     {
+        Services.AppMetrics.SignalRConnections.Dec();
         ConnectionGroups.TryRemove(Context.ConnectionId, out _);
         return base.OnDisconnectedAsync(exception);
     }

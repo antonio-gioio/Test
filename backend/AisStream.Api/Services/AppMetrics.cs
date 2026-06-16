@@ -10,4 +10,7 @@ public static class AppMetrics
 
     public static readonly Gauge CachedVessels = Metrics.CreateGauge(
         "ais_vessels_cached", "Vessels currently held in the in-memory cache.");
+
+    public static readonly Gauge SignalRConnections = Metrics.CreateGauge(
+        "ais_signalr_connections", "Active SignalR hub connections on this node.");
 }
